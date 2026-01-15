@@ -1,7 +1,7 @@
-# Thesis Repository Template
+# Thesis Grpc
 
-## Usage
+## Installation
 
-1. Create a new repository using this template.
-2. Clone it.
-3. Run `make` to scaffold the project.
+```shell
+composer require thesis/grpc
+```
