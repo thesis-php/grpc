@@ -35,7 +35,7 @@
             "Thesis\\Grpc\\": "src/"
         },
         "files": [
-          "src/Internal/Protocol/Frame.php"
+            "src/Internal/Protocol/Frame.php"
         ]
     },
     "autoload-dev": {
