@@ -18,16 +18,25 @@
         }
     ],
     "require": {
-        "php": "^8.4"
+        "php": "^8.4",
+        "amphp/http-client": "5.x-dev",
+        "amphp/pipeline": "1.x-dev",
+        "thesis/endian": "0.3.x-dev",
+        "thesis/package-version": "0.1.x-dev",
+        "thesis/protobuf": "0.1.x-dev"
     },
     "require-dev": {
         "phpunit/phpunit": "^12.4",
         "symfony/var-dumper": "^8.0"
     },
+    "minimum-stability": "dev",
     "autoload": {
         "psr-4": {
             "Thesis\\Grpc\\": "src/"
-        }
+        },
+        "files": [
+          "src/Internal/Protocol/Frame.php"
+        ]
     },
     "autoload-dev": {
         "psr-4": {
