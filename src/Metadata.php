@@ -20,10 +20,8 @@ final class Metadata implements
     /**
      * @param array<non-empty-string, string|list<string>> $kv
      */
-    public function __construct(
-        #[\SensitiveParameter]
-        array $kv = [],
-    ) {
+    public function __construct(#[\SensitiveParameter] array $kv = [])
+    {
         foreach ($kv as $key => $values) {
             if (\is_string($values)) {
                 $values = [$values];

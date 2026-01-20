@@ -72,8 +72,8 @@ final class Builder
     public function build(): Client
     {
         return new Client(
-            transport: $this->httpclient ?? HttpClientBuilder::buildDefault(),
-            uri: new Internal\Transport\UriFactory($this->host ?? self::DEFAULT_HOST),
+            host: $this->host ?? self::DEFAULT_HOST,
+            client: $this->httpclient ?? HttpClientBuilder::buildDefault(),
             encoder: $this->encoder,
             compressor: $this->compressor ?? IdentityCompressor::Compressor,
         );

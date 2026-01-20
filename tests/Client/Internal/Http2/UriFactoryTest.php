@@ -7,7 +7,7 @@ namespace Thesis\Grpc\Client\Internal\Http2;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
-use Thesis\Grpc\Client\Internal\Transport\UriFactory;
+use Thesis\Grpc\Internal\Http2\UriFactory;
 
 #[CoversClass(UriFactory::class)]
 final class UriFactoryTest extends TestCase

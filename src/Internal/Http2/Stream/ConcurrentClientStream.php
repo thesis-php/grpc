@@ -19,16 +19,12 @@ use Thesis\Grpc\Metadata;
  * @template-covariant Out of object
  * @template-implements ClientStream<In, Out>
  */
-final class BoundedClientStream implements ClientStream
+final class ConcurrentClientStream implements ClientStream
 {
-    private Response $response { /** @phpstan-ignore property.uninitialized */
-        get => $this->response ??= $this->responseFuture->await();
-    }
+    private ?Response $response = null;
 
-    /** @var Pipeline\ConcurrentIterator<Out> */
-    private Pipeline\ConcurrentIterator $recv { /** @phpstan-ignore property.uninitialized */
-        get => $this->recv ??= ($this->decode)($this->response);
-    }
+    /** @var ?Pipeline\ConcurrentIterator<Out> */
+    private ?Pipeline\ConcurrentIterator $recv = null;
 
     /**
      * @param Future<Response> $responseFuture
@@ -54,28 +50,25 @@ final class BoundedClientStream implements ClientStream
     #[\Override]
     public function receive(): mixed
     {
-        if (!$this->recv->continue()) {
+        $recv = $this->doGetReceiver();
+
+        if (!$recv->continue()) {
             throw new ClientStreamIsClosed();
         }
 
-        return $this->recv->getValue();
+        return $recv->getValue();
     }
 
     #[\Override]
     public function headers(): Metadata
     {
-        return new Metadata($this->response->getHeaders());
+        return new Metadata($this->doGetResponse()->getHeaders());
     }
 
     #[\Override]
     public function trailers(Cancellation $cancellation = new NullCancellation()): Metadata
     {
-        return new Metadata(
-            $this->response
-                ->getTrailers()
-                ->await($cancellation)
-                ->getHeaders(),
-        );
+        return new Metadata($this->doGetResponse()->getTrailers()->await($cancellation)->getHeaders());
     }
 
     #[\Override]
@@ -91,6 +84,19 @@ final class BoundedClientStream implements ClientStream
     #[\Override]
     public function getIterator(): \Traversable
     {
-        return $this->recv->getIterator();
+        return $this->doGetReceiver()->getIterator();
+    }
+
+    private function doGetResponse(): Response
+    {
+        return $this->response ??= $this->responseFuture->await();
+    }
+
+    /**
+     * @return Pipeline\ConcurrentIterator<Out>
+     */
+    private function doGetReceiver(): Pipeline\ConcurrentIterator
+    {
+        return $this->recv ??= ($this->decode)($this->doGetResponse());
     }
 }

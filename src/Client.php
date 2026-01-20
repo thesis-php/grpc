@@ -5,54 +5,65 @@ declare(strict_types=1);
 namespace Thesis\Grpc;
 
 use Amp\Cancellation;
-use Amp\Future;
 use Amp\Http\Client\DelegateHttpClient;
-use Amp\Http\Client\Request as HttpRequest;
-use Amp\Http\Client\Response as HttpResponse;
 use Amp\NullCancellation;
-use Amp\Pipeline;
-use Thesis\Grpc\Client\Internal\Http2;
-use Thesis\Grpc\Client\Internal\Transport;
 use Thesis\Grpc\Exception\ClientStreamIsClosed;
-use Thesis\Grpc\Internal\Http2\Stream;
+use Thesis\Grpc\Internal\Http2;
 use Thesis\Package;
-use function Amp\async;
 
 /**
  * @api
  */
 final readonly class Client
 {
-    private Http2\GrpcStream $stream;
+    private Metadata $md;
 
+    private Http2\Transport $transport;
+
+    /**
+     * @param non-empty-string $host
+     */
     public function __construct(
-        private DelegateHttpClient $transport,
-        private Transport\UriFactory $uri,
-        private Encoding\Encoder $encoder,
-        private Compression\Compressor $compressor,
+        string $host,
+        DelegateHttpClient $client,
+        Encoding\Encoder $encoder,
+        Compression\Compressor $compressor,
     ) {
-        $this->stream = new Http2\GrpcStream(
-            $encoder,
-            $compressor,
+        /** @var ?non-empty-string $version */
+        static $version;
+        $version ??= Package\version('thesis/grpc');
+
+        $this->md = new Metadata([
+            'Content-Type' => "application/grpc+{$encoder->name()}",
+            'User-Agent' => "grpc-php-thesis/{$version}",
+            'grpc-encoding' => $compressor->name(),
+            'TE' => 'trailers',
+        ]);
+        $this->transport = new Http2\Transport(
+            http: $client,
+            uri: new Http2\UriFactory($host),
+            encoder: $encoder,
+            compressor: $compressor,
         );
     }
 
     /**
-     * @template E of object
-     * @param non-empty-string $method
-     * @param class-string<E> $replyType
-     * @return E
+     * @template In of object
+     * @template Out of object
+     * @param In $request
+     * @param Invoke<In, Out> $invoke
+     * @return Out
      * @throws ClientStreamIsClosed
      */
     public function invoke(
-        string $method,
         object $request,
-        string $replyType,
+        Invoke $invoke,
         Metadata $md = new Metadata(),
         Cancellation $cancellation = new NullCancellation(),
     ): object {
-        $stream = $this->call(
-            new Request($method, $replyType, $md),
+        $stream = $this->createStream(
+            $invoke,
+            $md,
             $cancellation,
         );
 
@@ -65,40 +76,18 @@ final readonly class Client
     /**
      * @template In of object
      * @template Out of object
-     * @param Request<In, Out> $request
+     * @param Invoke<In, Out> $invoke
      * @return ClientStream<In, Out>
      */
-    public function call(Request $request, Cancellation $cancellation = new NullCancellation()): ClientStream
-    {
-        /** @var ?non-empty-string $version */
-        static $version;
-        $version ??= Package\version('thesis/grpc');
-
-        $md = new Metadata([
-            'Content-Type' => "application/grpc+{$this->encoder->name()}",
-            'User-Agent' => "grpc-php-thesis/{$version}",
-            'grpc-encoding' => $this->compressor->name(),
-            'TE' => 'trailers',
-        ]);
-
-        /** @var Pipeline\Queue<In> $send */
-        $send = new Pipeline\Queue();
-
-        $req = new HttpRequest(
-            uri: $this->uri->create($request->method),
-            method: 'POST',
-            body: $this->stream->encode($send->iterate()),
-        );
-        $req->setProtocolVersions(['2']);
-        $req->setHeaders($md->merge($request->md)->kv);
-
-        /** @var Future<HttpResponse> $response */
-        $response = async($this->transport->request(...), $req, $cancellation);
-
-        return new Stream\BoundedClientStream(
-            $response,
-            $send,
-            fn(HttpResponse $response) => $this->stream->decode($response->getBody(), $request->replyType),
+    public function createStream(
+        Invoke $invoke,
+        Metadata $md = new Metadata(),
+        Cancellation $cancellation = new NullCancellation(),
+    ): ClientStream {
+        return $this->transport->createClientStream(
+            $invoke,
+            $this->md->merge($md),
+            $cancellation,
         );
     }
 }
