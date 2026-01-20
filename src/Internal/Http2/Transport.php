@@ -49,16 +49,16 @@ final readonly class Transport
         /** @var Pipeline\Queue<In> $send */
         $send = new Pipeline\Queue();
 
-        $req = new Request(
+        $request = new Request(
             uri: $this->uri->create($invoke->method),
             method: 'POST',
             body: $this->encodeStream($send->iterate()),
         );
-        $req->setProtocolVersions(['2']);
-        $req->setHeaders($md->kv);
+        $request->setProtocolVersions(['2']);
+        $request->setHeaders($md->kv);
 
         /** @var Future<Response> $response */
-        $response = async($this->http->request(...), $req, $cancellation);
+        $response = async($this->http->request(...), $request, $cancellation);
 
         return new Stream\ConcurrentClientStream(
             $response,
