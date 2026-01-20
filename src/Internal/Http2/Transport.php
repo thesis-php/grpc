@@ -63,7 +63,7 @@ final readonly class Transport
         return new Stream\ConcurrentClientStream(
             $response,
             $send,
-            fn(Response $response) => $this->decodeStream($response->getBody(), $invoke->type),
+            fn(Response $response) => $this->decodeStream($response, $invoke->type),
         );
     }
 
@@ -110,11 +110,10 @@ final readonly class Transport
 
     /**
      * @template T of object
-     * @param \Traversable<string> $in
-     * @param class-string<T> $classType
+     * @param class-string<T> $type
      * @return Pipeline\ConcurrentIterator<T>
      */
-    public function decodeStream(\Traversable $in, string $classType): Pipeline\ConcurrentIterator
+    private function decodeStream(Response $response, string $type): Pipeline\ConcurrentIterator
     {
         /** @var Pipeline\Queue<T> $out */
         $out = new Pipeline\Queue();
@@ -125,12 +124,12 @@ final readonly class Transport
         EventLoop::queue(static function () use (
             $encoder,
             $compressor,
-            $in,
+            $response,
             $out,
-            $classType,
+            $type,
         ): void {
             /** @var string $message */
-            foreach ($in as $message) {
+            foreach ($response->getBody() as $message) {
                 if ($message === '') {
                     continue;
                 }
@@ -143,7 +142,7 @@ final readonly class Transport
                     $buffer = $compressor->decompress($buffer);
                 }
 
-                $out->push($encoder->decode($buffer, $classType));
+                $out->push($encoder->decode($buffer, $type));
             }
 
             $out->complete();
