@@ -22,20 +22,18 @@ final readonly class Client
 
     /**
      * @param non-empty-string $host
+     * @param list<Client\Interceptor> $interceptors
      */
     public function __construct(
         string $host,
         DelegateHttpClient $client,
         Encoding\Encoder $encoder,
         Compression\Compressor $compressor,
+        private array $interceptors = [],
     ) {
-        /** @var ?non-empty-string $version */
-        static $version;
-        $version ??= Package\version('thesis/grpc');
-
         $this->md = new Metadata([
             'Content-Type' => "application/grpc+{$encoder->name()}",
-            'User-Agent' => "grpc-php-thesis/{$version}",
+            'User-Agent' => 'grpc-php-thesis/' . Package\version('thesis/grpc'),
             'grpc-encoding' => $compressor->name(),
             'TE' => 'trailers',
         ]);
@@ -84,10 +82,22 @@ final readonly class Client
         Metadata $md = new Metadata(),
         Cancellation $cancellation = new NullCancellation(),
     ): ClientStream {
-        return $this->transport->createClientStream(
-            $invoke,
-            $this->md->merge($md),
-            $cancellation,
+        $handler = array_reduce(
+            array_reverse($this->interceptors),
+            static fn(callable $stack, Client\Interceptor $interceptor) => static fn(
+                Invoke $invoke,
+                Metadata $md,
+                Cancellation $cancellation,
+            ) => $interceptor->intercept(
+                $invoke,
+                $md,
+                $cancellation,
+                new Client\StackInterceptor($stack),
+            ),
+            $this->transport->createClientStream(...),
         );
+
+        /** @var ClientStream<In, Out> */
+        return $handler($invoke, $this->md->merge($md), $cancellation);
     }
 }

@@ -25,6 +25,9 @@ final class Builder
 
     private ?DelegateHttpClient $httpclient = null;
 
+    /** @var list<Interceptor> */
+    private array $interceptors = [];
+
     public function __construct(
         private Encoder $encoder,
     ) {}
@@ -64,6 +67,20 @@ final class Builder
         return $builder;
     }
 
+    /**
+     * @no-named-arguments
+     */
+    public function withInterceptors(Interceptor ...$interceptors): self
+    {
+        $builder = clone $this;
+        $builder->interceptors = [
+            ...$builder->interceptors,
+            ...$interceptors,
+        ];
+
+        return $builder;
+    }
+
     public static function buildDefault(Encoder $encoder): Client
     {
         return new self($encoder)->build();
@@ -76,6 +93,7 @@ final class Builder
             client: $this->httpclient ?? HttpClientBuilder::buildDefault(),
             encoder: $this->encoder,
             compressor: $this->compressor ?? IdentityCompressor::Compressor,
+            interceptors: $this->interceptors,
         );
     }
 }

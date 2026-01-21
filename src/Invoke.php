@@ -6,8 +6,8 @@ namespace Thesis\Grpc;
 
 /**
  * @api
- * @template In of object
- * @template Out of object
+ * @template In of object = object
+ * @template Out of object = object
  */
 final readonly class Invoke
 {
