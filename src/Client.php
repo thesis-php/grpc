@@ -9,14 +9,14 @@ use Amp\Http\Client\DelegateHttpClient;
 use Amp\NullCancellation;
 use Thesis\Grpc\Exception\ClientStreamIsClosed;
 use Thesis\Grpc\Internal\Http2;
-use Thesis\Package;
 
 /**
  * @api
  */
 final readonly class Client
 {
-    private Metadata $md;
+    /** @var list<Client\Interceptor> */
+    private array $interceptors;
 
     private Http2\Transport $transport;
 
@@ -29,14 +29,16 @@ final readonly class Client
         DelegateHttpClient $client,
         Encoding\Encoder $encoder,
         Compression\Compressor $compressor,
-        private array $interceptors = [],
+        array $interceptors = [],
     ) {
-        $this->md = new Metadata([
-            'Content-Type' => "application/grpc+{$encoder->name()}",
-            'User-Agent' => 'grpc-php-thesis/' . Package\version('thesis/grpc'),
-            'grpc-encoding' => $compressor->name(),
-            'TE' => 'trailers',
-        ]);
+        $this->interceptors = [
+            ...$interceptors,
+            new Client\AppendMetadataInterceptor(
+                new Metadata()->withKeys(
+                    new Metadata\Control($encoder->name(), $compressor->name()),
+                ),
+            ),
+        ];
         $this->transport = new Http2\Transport(
             http: $client,
             uri: new Http2\UriFactory($host),
@@ -98,6 +100,6 @@ final readonly class Client
         );
 
         /** @var ClientStream<In, Out> */
-        return $handler($invoke, $this->md->merge($md), $cancellation);
+        return $handler($invoke, $md, $cancellation);
     }
 }

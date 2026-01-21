@@ -48,6 +48,17 @@ final class Metadata implements
         return $md;
     }
 
+    public function withKeys(Metadata\MetadataKey ...$keys): self
+    {
+        $md = clone $this;
+
+        foreach ($keys as $key) {
+            $md = $key->append($md);
+        }
+
+        return $md;
+    }
+
     /**
      * @param non-empty-string $key
      */
