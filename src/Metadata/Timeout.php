@@ -9,7 +9,7 @@ use Thesis\Grpc\Metadata;
 /**
  * @api
  */
-final class Timeout implements
+final readonly class Timeout implements
     MetadataKey,
     \Stringable
 {
@@ -35,8 +35,8 @@ final class Timeout implements
      * @param self::TYPE_* $unit
      */
     private function __construct(
-        private readonly int $value,
-        private readonly string $unit,
+        private int $value,
+        private string $unit,
     ) {}
 
     /**

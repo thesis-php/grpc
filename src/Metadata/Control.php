@@ -28,7 +28,6 @@ final readonly class Control implements MetadataKey
             ->with('Content-Type', "application/grpc+{$this->encoding}")
             ->with('User-Agent', 'grpc-php-thesis/' . Package\version('thesis/grpc'))
             ->with('grpc-encoding', $this->compression)
-            ->with('TE', 'trailers')
-            ;
+            ->with('TE', 'trailers');
     }
 }

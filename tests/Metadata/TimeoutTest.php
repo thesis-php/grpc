@@ -12,14 +12,24 @@ use PHPUnit\Framework\TestCase;
 final class TimeoutTest extends TestCase
 {
     /**
+     * @param non-empty-string $headerValue
+     */
+    #[DataProvider('provideTimeoutCases')]
+    public function testTimeout(Timeout $timeout, string $headerValue, float $seconds): void
+    {
+        self::assertSame($headerValue, (string) $timeout);
+        self::assertSame($seconds, $timeout->toSeconds());
+    }
+
+    /**
      * @return iterable<array-key, array{Timeout, non-empty-string, float}>
      */
-    public static function timeoutFixtures(): iterable
+    public static function provideTimeoutCases(): iterable
     {
         yield 'hours' => [
             Timeout::hours(1),
             '1H',
-            3600.0,
+            3_600.0,
         ];
 
         yield 'minutes' => [
@@ -35,7 +45,7 @@ final class TimeoutTest extends TestCase
         ];
 
         yield 'milliseconds' => [
-            Timeout::milliseconds(2347),
+            Timeout::milliseconds(2_347),
             '2347m',
             2.347,
         ];
@@ -43,30 +53,29 @@ final class TimeoutTest extends TestCase
         yield 'microseconds' => [
             Timeout::microseconds(1_000_243),
             '1000243u',
-            1.000243,
+            1.000_243,
         ];
 
         yield 'nanoseconds' => [
             Timeout::nanoseconds(1_000_000_900),
             '1000000900n',
-            1.0000009,
+            1.000_000_9,
         ];
     }
 
     /**
-     * @param non-empty-string $headerValue
+     * @param non-empty-string $value
      */
-    #[DataProvider('timeoutFixtures')]
-    public function testTimeout(Timeout $timeout, string $headerValue, float $seconds): void
+    #[DataProvider('provideFromStringCases')]
+    public function testFromString(string $value, Timeout $timeout): void
     {
-        self::assertSame($headerValue, (string) $timeout);
-        self::assertSame($seconds, $timeout->toSeconds());
+        self::assertEquals($timeout, Timeout::fromString($value));
     }
 
     /**
      * @return iterable<array-key, array{non-empty-string, Timeout}>
      */
-    public static function stringTimeoutFixtures(): iterable
+    public static function provideFromStringCases(): iterable
     {
         yield 'hours' => [
             '2H',
@@ -90,22 +99,13 @@ final class TimeoutTest extends TestCase
 
         yield 'microseconds' => [
             '6000u',
-            Timeout::microseconds(6000),
+            Timeout::microseconds(6_000),
         ];
 
         yield 'nanoseconds' => [
             '60000n',
             Timeout::nanoseconds(60_000),
         ];
-    }
-
-    /**
-     * @param non-empty-string $value
-     */
-    #[DataProvider('stringTimeoutFixtures')]
-    public function testFromString(string $value, Timeout $timeout): void
-    {
-        self::assertEquals($timeout, Timeout::fromString($value));
     }
 
     public function testHeaderValueIsTooShort(): void
