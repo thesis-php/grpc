@@ -21,7 +21,7 @@ $config = new Config()
     ->setCacheFile(__DIR__ . '/var/' . basename(__FILE__) . '.cache');
 
 new PhpCsFixerCodingStandard()->applyTo($config, [
-    // 'rule' => ['overridden' => 'config'],
+    'native_constant_invocation' => false,
 ]);
 
 return $config;
