@@ -28,6 +28,10 @@ interface ClientStream extends \IteratorAggregate
      */
     public function receive(): mixed;
 
+    /**
+     * This method should be called after the ({@see send}) method has been called for the first time.
+     * Otherwise, it will "block" the calling code.
+     */
     public function headers(): Metadata;
 
     /**
