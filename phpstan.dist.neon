@@ -23,3 +23,7 @@ parameters:
     reportAnyTypeWideningInVarTag: true
     reportPossiblyNonexistentConstantArrayOffset: true
     reportPossiblyNonexistentGeneralArrayOffset: true
+    ignoreErrors:
+        -
+            identifier: property.uninitialized
+            path: src/Server/Internal/Http2/ConcurrentServerStream.php

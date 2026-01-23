@@ -19,8 +19,15 @@
     ],
     "require": {
         "php": "^8.4",
+        "amphp/amp": "3.x-dev",
+        "amphp/byte-stream": "2.x-dev",
         "amphp/http-client": "5.x-dev",
+        "amphp/http-server": "3.x-dev",
         "amphp/pipeline": "1.x-dev",
+        "amphp/socket": "2.x-dev",
+        "amphp/sync": "2.x-dev",
+        "psr/log": "^3.0@dev",
+        "revolt/event-loop": "^1.0@dev",
         "thesis/endian": "0.3.x-dev",
         "thesis/package-version": "0.1.x-dev",
         "thesis/protobuf": "0.1.x-dev"
