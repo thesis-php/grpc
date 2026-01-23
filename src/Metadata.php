@@ -48,13 +48,32 @@ final class Metadata implements
         return $md;
     }
 
+    public function withKey(Metadata\MetadataKey $key): self
+    {
+        return $key->append($this);
+    }
+
     public function withKeys(Metadata\MetadataKey ...$keys): self
     {
         $md = clone $this;
 
         foreach ($keys as $key) {
-            $md = $key->append($md);
+            $md = $md->withKey($key);
         }
+
+        return $md;
+    }
+
+    /**
+     * @no-named-arguments
+     * @param non-empty-string $key
+     */
+    public function replace(string $key, #[\SensitiveParameter] string ...$values): self
+    {
+        $key = strtolower($key);
+
+        $md = clone $this;
+        $md->kv[$key] = $values;
 
         return $md;
     }
@@ -84,6 +103,66 @@ final class Metadata implements
         }
 
         return $md;
+    }
+
+    public function join(self $other): void
+    {
+        foreach ($other->kv as $key => $values) {
+            $this->kv[$key] = [
+                ...$this->kv[$key] ?? [],
+                ...$values,
+            ];
+        }
+    }
+
+    /**
+     * @param ?non-empty-string $default
+     * @return ($default is null ? (?non-empty-string) : non-empty-string)
+     */
+    public function compression(?string $default = null): ?string
+    {
+        return $this->value('grpc-encoding', $default);
+    }
+
+    /**
+     * @param ?non-empty-string $default
+     * @return ($default is null ? (?non-empty-string) : non-empty-string)
+     */
+    public function encoding(?string $default = null): ?string
+    {
+        $contentType = $this->value('content-type');
+        if ($contentType === null) {
+            return $default;
+        }
+
+        $encoding = substr($contentType, \strlen('application/grpc+'));
+        if ($encoding === '') {
+            return $default;
+        }
+
+        return $encoding;
+    }
+
+    /**
+     * @param non-empty-string $key
+     * @param ?non-empty-string $default
+     * @return ($default is null ? (?non-empty-string) : non-empty-string)
+     */
+    public function value(string $key, ?string $default = null): ?string
+    {
+        $values = $this[$key];
+
+        if ($values === []) {
+            return $default;
+        }
+
+        $value = $values[0];
+
+        if ($value === '') {
+            return $default;
+        }
+
+        return $value;
     }
 
     #[\Override]
