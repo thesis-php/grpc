@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Thesis\Grpc;
+namespace Thesis\Grpc\Client;
 
 /**
  * @api

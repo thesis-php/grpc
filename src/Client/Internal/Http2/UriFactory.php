@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Thesis\Grpc\Internal\Http2;
+namespace Thesis\Grpc\Client\Internal\Http2;
 
 /**
  * @internal

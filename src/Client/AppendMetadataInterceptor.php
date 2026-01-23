@@ -6,7 +6,6 @@ namespace Thesis\Grpc\Client;
 
 use Amp\Cancellation;
 use Thesis\Grpc\ClientStream;
-use Thesis\Grpc\Invoke;
 use Thesis\Grpc\Metadata;
 
 /**

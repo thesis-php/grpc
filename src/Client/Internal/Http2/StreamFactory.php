@@ -1,0 +1,76 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Thesis\Grpc\Client\Internal\Http2;
+
+use Amp\ByteStream\ReadableIterableStream;
+use Amp\Cancellation;
+use Amp\Future;
+use Amp\Http\Client\DelegateHttpClient;
+use Amp\Http\Client\Request;
+use Amp\Http\Client\Response;
+use Amp\Http\Client\StreamedContent;
+use Amp\NullCancellation;
+use Amp\Pipeline;
+use Thesis\Grpc\Client\Invoke;
+use Thesis\Grpc\ClientStream;
+use Thesis\Grpc\Compression\Compressor;
+use Thesis\Grpc\Encoding\Encoder;
+use Thesis\Grpc\Internal\Http2\StreamCodec;
+use Thesis\Grpc\Metadata;
+use function Amp\async;
+
+/**
+ * @internal
+ */
+final readonly class StreamFactory
+{
+    private StreamCodec $codec;
+
+    public function __construct(
+        private DelegateHttpClient $http,
+        private UriFactory $uri,
+        Encoder $encoder,
+        Compressor $compressor,
+    ) {
+        $this->codec = new StreamCodec(
+            $encoder,
+            $compressor,
+        );
+    }
+
+    /**
+     * @template In of object
+     * @template Out of object
+     * @param Invoke<In, Out> $invoke
+     * @return ClientStream<In, Out>
+     */
+    public function create(
+        Invoke $invoke,
+        Metadata $md = new Metadata(),
+        Cancellation $cancellation = new NullCancellation(),
+    ): ClientStream {
+        /** @var Pipeline\Queue<In> $send */
+        $send = new Pipeline\Queue();
+
+        $request = new Request(
+            uri: $this->uri->create($invoke->method),
+            method: 'POST',
+            body: StreamedContent::fromStream(
+                new ReadableIterableStream($this->codec->encode($send->iterate())),
+            ),
+        );
+        $request->setProtocolVersions(['2']);
+        $request->setHeaders($md->kv);
+
+        /** @var Future<Response> $response */
+        $response = async($this->http->request(...), $request, $cancellation);
+
+        return new ConcurrentClientStream(
+            $response,
+            $send,
+            fn(Response $response) => $this->codec->decode($response->getBody(), $invoke->type),
+        );
+    }
+}

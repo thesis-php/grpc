@@ -7,8 +7,8 @@ namespace Thesis\Grpc;
 use Amp\Cancellation;
 use Amp\Http\Client\DelegateHttpClient;
 use Amp\NullCancellation;
+use Thesis\Grpc\Client\Internal\Http2;
 use Thesis\Grpc\Exception\ClientStreamIsClosed;
-use Thesis\Grpc\Internal\Http2;
 
 /**
  * @api
@@ -18,7 +18,7 @@ final readonly class Client
     /** @var list<Client\Interceptor> */
     private array $interceptors;
 
-    private Http2\Transport $transport;
+    private Http2\StreamFactory $streams;
 
     /**
      * @param non-empty-string $host
@@ -39,7 +39,7 @@ final readonly class Client
                 ),
             ),
         ];
-        $this->transport = new Http2\Transport(
+        $this->streams = new Http2\StreamFactory(
             http: $client,
             uri: new Http2\UriFactory($host),
             encoder: $encoder,
@@ -51,13 +51,13 @@ final readonly class Client
      * @template In of object
      * @template Out of object
      * @param In $request
-     * @param Invoke<In, Out> $invoke
+     * @param Client\Invoke<In, Out> $invoke
      * @return Out
      * @throws ClientStreamIsClosed
      */
     public function invoke(
         object $request,
-        Invoke $invoke,
+        Client\Invoke $invoke,
         Metadata $md = new Metadata(),
         Cancellation $cancellation = new NullCancellation(),
     ): object {
@@ -76,18 +76,18 @@ final readonly class Client
     /**
      * @template In of object
      * @template Out of object
-     * @param Invoke<In, Out> $invoke
+     * @param Client\Invoke<In, Out> $invoke
      * @return ClientStream<In, Out>
      */
     public function createStream(
-        Invoke $invoke,
+        Client\Invoke $invoke,
         Metadata $md = new Metadata(),
         Cancellation $cancellation = new NullCancellation(),
     ): ClientStream {
         $handler = array_reduce(
             array_reverse($this->interceptors),
             static fn(callable $stack, Client\Interceptor $interceptor) => static fn(
-                Invoke $invoke,
+                Client\Invoke $invoke,
                 Metadata $md,
                 Cancellation $cancellation,
             ) => $interceptor->intercept(
@@ -96,7 +96,7 @@ final readonly class Client
                 $cancellation,
                 new Client\StackInterceptor($stack),
             ),
-            $this->transport->createClientStream(...),
+            $this->streams->create(...),
         );
 
         /** @var ClientStream<In, Out> */

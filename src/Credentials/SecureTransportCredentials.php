@@ -2,16 +2,20 @@
 
 declare(strict_types=1);
 
-namespace Thesis\Grpc\Client\Credentials;
+namespace Thesis\Grpc\Credentials;
 
 use Amp\Socket\Certificate;
 use Amp\Socket\ClientTlsContext;
-use Thesis\Grpc\Client\TransportCredentials;
+use Amp\Socket\ServerTlsContext;
+use Thesis\Grpc\Client;
+use Thesis\Grpc\Server;
 
 /**
  * @api
  */
-final class SecureTransportCredentials implements TransportCredentials
+final class SecureTransportCredentials implements
+    Client\TransportCredentials,
+    Server\TransportCredentials
 {
     private string $peerName = '';
 
@@ -26,6 +30,9 @@ final class SecureTransportCredentials implements TransportCredentials
     private bool $verifyPeerName = true;
 
     private ?Certificate $certificate = null;
+
+    /** @var array<non-empty-string, Certificate> */
+    private array $certificates = [];
 
     public function withPeerName(string $peerName): self
     {
@@ -81,15 +88,52 @@ final class SecureTransportCredentials implements TransportCredentials
         return $credentials;
     }
 
+    /**
+     * @param array<non-empty-string, Certificate> $certificates
+     */
+    public function withCertificates(array $certificates): self
+    {
+        $credentials = clone $this;
+        $credentials->certificates = [
+            ...$credentials->certificates,
+            ...$certificates,
+        ];
+
+        return $credentials;
+    }
+
     #[\Override]
-    public function buildTlsContext(): ClientTlsContext
+    public function createClientContext(): ClientTlsContext
     {
         $context = new ClientTlsContext($this->peerName)
             ->withCaFile($this->caCert)
             ->withCaPath($this->caPath)
             ->withoutPeerVerification()
-            ->withPeerNameVerification()
+            ->withoutPeerNameVerification()
             ->withCertificate($this->certificate)
+            ->withApplicationLayerProtocols(['2']);
+
+        if ($this->verifyPeer) {
+            $context = $context->withPeerVerification();
+        }
+
+        if ($this->verifyPeerName) {
+            $context = $context->withPeerNameVerification();
+        }
+
+        return $context;
+    }
+
+    #[\Override]
+    public function createServerContext(): ServerTlsContext
+    {
+        $context = new ServerTlsContext()
+            ->withCaFile($this->caCert)
+            ->withCaPath($this->caPath)
+            ->withoutPeerVerification()
+            ->withoutPeerNameVerification()
+            ->withPeerName($this->peerName)
+            ->withCertificates($this->certificates)
             ->withApplicationLayerProtocols(['2']);
 
         if ($this->verifyPeer) {

@@ -147,7 +147,7 @@ final class Builder
                         $this->connector,
                         new ConnectContext()
                             ->withConnectTimeout($this->connectTimeout)
-                            ->withTlsContext($this->credentials?->buildTlsContext()),
+                            ->withTlsContext($this->credentials?->createClientContext()),
                     ),
                 ))
                 ->skipDefaultUserAgent()
