@@ -11,3 +11,4 @@ services:
     volumes:
       - .:/workspace:cached
     working_dir: /workspace
+    network_mode: host
