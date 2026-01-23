@@ -9,6 +9,8 @@ namespace Thesis\Grpc\Encoding;
  */
 interface Encoder
 {
+    final public const string DEFAULT_ENCODING = 'proto';
+
     /**
      * @return non-empty-string
      */
