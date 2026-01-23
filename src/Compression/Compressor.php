@@ -9,6 +9,8 @@ namespace Thesis\Grpc\Compression;
  */
 interface Compressor
 {
+    final public const string DEFAULT_COMPRESSION = 'identity';
+
     /**
      * @return non-empty-string
      */
