@@ -10,7 +10,6 @@ use Amp\Http\Server\Driver\HttpDriver;
 use Amp\Http\Server\Driver\SocketClientFactory;
 use Amp\Http\Server\Middleware;
 use Amp\Http\Server\Middleware\ConcurrencyLimitingMiddleware;
-use Amp\Http\Server\Middleware\ExceptionHandlerMiddleware;
 use Amp\Http\Server\Middleware\ForwardedMiddleware;
 use Amp\Http\Server\Request;
 use Amp\Http\Server\RequestHandler;
@@ -26,7 +25,8 @@ use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Compression\IdentityCompressor;
 use Thesis\Grpc\Encoding\Encoder;
 use Thesis\Grpc\Server;
-use Thesis\Grpc\Server\Internal\Http2\ServerExceptionHandler;
+use Thesis\Grpc\Server\Internal\Http2\ServerErrorHandler;
+use Thesis\Grpc\Server\Internal\Http2\ServerRequestHandler;
 use Thesis\Grpc\Server\Internal\Transport;
 
 /**
@@ -71,8 +71,6 @@ final class Builder
     private ?ProxyConfig $proxy = null;
 
     private ?TransportCredentials $credentials = null;
-
-    private ?ExceptionHandler $exceptionHandler = null;
 
     /** @var positive-int */
     private int $connectionLimit = self::DEFAULT_CONNECTION_LIMIT;
@@ -185,14 +183,6 @@ final class Builder
     {
         $builder = clone $this;
         $builder->credentials = $credentials;
-
-        return $builder;
-    }
-
-    public function withExceptionHandler(ExceptionHandler $exceptionHandler): self
-    {
-        $builder = clone $this;
-        $builder->exceptionHandler = $exceptionHandler;
 
         return $builder;
     }
@@ -325,9 +315,6 @@ final class Builder
         ];
 
         $middlewares[] = self::encodingMiddleware($compressors);
-        $middlewares[] = new ExceptionHandlerMiddleware(
-            new ServerExceptionHandler($this->exceptionHandler),
-        );
 
         if ($this->concurrencyLimit !== null) {
             $middlewares[] = new ConcurrencyLimitingMiddleware($this->concurrencyLimit);
@@ -366,9 +353,13 @@ final class Builder
 
         return new Server(
             server: $server,
-            encoderFactory: new MessageEncoderFactory($encoders),
-            compressorFactory: new MessageCompressorFactory($compressors),
-            services: $this->services,
+            requestHandler: new ServerRequestHandler(
+                encoderFactory: new MessageEncoderFactory($encoders),
+                compressorFactory: new MessageCompressorFactory($compressors),
+                services: $this->services,
+                interceptors: $this->interceptors,
+            ),
+            errorHandler: new ServerErrorHandler(),
         );
     }
 
