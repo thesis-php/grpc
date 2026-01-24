@@ -2,9 +2,10 @@
 
 declare(strict_types=1);
 
-namespace Thesis\Grpc\Client;
+namespace Thesis\Grpc\Client\Internal\Http2;
 
 use Amp\Cancellation;
+use Thesis\Grpc\Client\Invoke;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Metadata;
 

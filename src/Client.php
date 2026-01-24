@@ -15,8 +15,7 @@ use Thesis\Grpc\Exception\ClientStreamIsClosed;
  */
 final readonly class Client
 {
-    /** @var list<Client\Interceptor> */
-    private array $interceptors;
+    private Http2\InterceptorComposer $interceptor;
 
     private Http2\StreamFactory $streams;
 
@@ -31,14 +30,13 @@ final readonly class Client
         Compression\Compressor $compressor,
         array $interceptors = [],
     ) {
-        $this->interceptors = [
+        $this->interceptor = new Http2\InterceptorComposer([
             ...$interceptors,
-            new Client\AppendMetadataInterceptor(
-                new Metadata()->withKeys(
-                    new Metadata\Control($encoder->name(), $compressor->name()),
-                ),
+            new Http2\AppendControlMetadataInterceptor(
+                $encoder->name(),
+                $compressor->name(),
             ),
-        ];
+        ]);
         $this->streams = new Http2\StreamFactory(
             http: $client,
             uri: new Http2\UriFactory($host),
@@ -84,22 +82,12 @@ final readonly class Client
         Metadata $md = new Metadata(),
         Cancellation $cancellation = new NullCancellation(),
     ): ClientStream {
-        $handler = array_reduce(
-            array_reverse($this->interceptors),
-            static fn(callable $stack, Client\Interceptor $interceptor) => static fn(
-                Client\Invoke $invoke,
-                Metadata $md,
-                Cancellation $cancellation,
-            ) => $interceptor->intercept(
-                $invoke,
-                $md,
-                $cancellation,
-                new Client\StackInterceptor($stack),
-            ),
+        /** @var ClientStream<In, Out> */
+        return $this->interceptor->intercept(
+            $invoke,
+            $md,
+            $cancellation,
             $this->streams->create(...),
         );
-
-        /** @var ClientStream<In, Out> */
-        return $handler($invoke, $md, $cancellation);
     }
 }
