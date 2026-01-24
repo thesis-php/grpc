@@ -70,11 +70,7 @@ final readonly class Client
         $stream->send($request);
         $stream->close();
 
-        try {
-            return $stream->receive();
-        } catch (\Throwable) {
-            dd($stream->headers());
-        }
+        return $stream->receive();
     }
 
     /**
