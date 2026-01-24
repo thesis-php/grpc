@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc\Server\Internal\Http2;
 
+use Amp\Cancellation;
 use Amp\Http\Server\Request;
 use Amp\Http\Server\RequestHandler;
 use Amp\Http\Server\Response;
@@ -12,10 +13,13 @@ use Revolt\EventLoop;
 use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Encoding\Encoder;
 use Thesis\Grpc\Metadata;
+use Thesis\Grpc\Server\Handle;
+use Thesis\Grpc\Server\Interceptor;
 use Thesis\Grpc\Server\MessageCompressorFactory;
 use Thesis\Grpc\Server\MessageEncoderFactory;
 use Thesis\Grpc\Server\Service;
 use Thesis\Grpc\ServerStream;
+use Thesis\Grpc\UnimplementedException;
 
 /**
  * @internal
@@ -24,15 +28,24 @@ final readonly class ServerRequestHandler implements RequestHandler
 {
     private Router $router;
 
+    private InterceptorComposer $interceptor;
+
     /**
      * @param list<Service> $services
+     * @param list<Interceptor> $interceptors
      */
     public function __construct(
         private MessageEncoderFactory $encoderFactory,
         private MessageCompressorFactory $compressorFactory,
         array $services,
+        array $interceptors,
     ) {
         $this->router = new Router($services);
+        $this->interceptor = new InterceptorComposer([
+            new SuppressExceptionInterceptor(),
+            new ParseGrpcTimeoutCancellationInterceptor(),
+            ...$interceptors,
+        ]);
     }
 
     #[\Override]
@@ -40,15 +53,31 @@ final readonly class ServerRequestHandler implements RequestHandler
     {
         $md = new Metadata($request->getHeaders());
 
-        $compressor = $this->compressorFactory->compressor(
-            $md->compression(Compressor::DEFAULT_COMPRESSION),
-        );
+        $response = new Response();
 
-        $encoder = $this->encoderFactory->encoder(
-            $md->encoding(Encoder::DEFAULT_ENCODING),
-        );
+        try {
+            $compressor = $this->compressorFactory->compressor(
+                $md->compression(Compressor::DEFAULT_COMPRESSION),
+            );
 
-        $rpc = $this->router->route($request);
+            $encoder = $this->encoderFactory->encoder(
+                $md->encoding(Encoder::DEFAULT_ENCODING),
+            );
+
+            $rpc = $this->router->route($request);
+        } catch (UnimplementedException $e) {
+            $md = new Metadata()
+                ->withKey(Metadata\StatusCode::UNIMPLEMENTED)
+                ->withKey(new Metadata\StatusMessage($e->getMessage()));
+
+            if (($contentType = $md->value('content-type')) !== null) {
+                $md = $md->withKey(new Metadata\ContentType($contentType));
+            }
+
+            $response->setHeaders($md->kv);
+
+            return $response;
+        }
 
         /** @var array<non-empty-string, StreamFactory> $streams */
         static $streams = [];
@@ -61,12 +90,27 @@ final readonly class ServerRequestHandler implements RequestHandler
         $stream = $factory->create(
             $rpc->handle,
             $request,
-            $response = new Response(),
+            $response,
         );
 
         $cancellation = new NullCancellation();
 
-        EventLoop::queue($rpc->handler->handle(...), $stream, $cancellation);
+        EventLoop::queue(
+            $this->interceptor->intercept(...),
+            $rpc->handle,
+            $md,
+            $stream,
+            $cancellation,
+            static fn(
+                Handle $handle,
+                Metadata $md,
+                ServerStream $stream,
+                Cancellation $cancellation,
+            ) => $rpc->handler->handle(
+                $stream,
+                $cancellation,
+            ),
+        );
 
         return $response;
     }

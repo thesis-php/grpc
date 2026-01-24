@@ -57,7 +57,7 @@ final class ConcurrentServerStream implements ServerStream
     public function close(): void
     {
         if ($this->send->isComplete()) {
-            throw new ServerStreamIsClosed();
+            return;
         }
 
         $this->trailersFuture->complete($this->trailers->kv);

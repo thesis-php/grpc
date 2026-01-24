@@ -6,7 +6,7 @@ namespace Thesis\Grpc\Server;
 
 /**
  * @api
- * @template In of object
+ * @template In of object = object
  */
 final readonly class Handle
 {

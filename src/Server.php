@@ -12,25 +12,17 @@ use Thesis\Grpc\Server\Internal\Http2;
  */
 final readonly class Server
 {
-    /**
-     * @param list<Server\Service> $services
-     */
     public function __construct(
         private HttpServer $server,
-        private Server\MessageEncoderFactory $encoderFactory,
-        private Server\MessageCompressorFactory $compressorFactory,
-        private array $services,
+        private Http2\ServerRequestHandler $requestHandler,
+        private Http2\ServerErrorHandler $errorHandler,
     ) {}
 
     public function start(): void
     {
         $this->server->start(
-            new Http2\ServerRequestHandler(
-                $this->encoderFactory,
-                $this->compressorFactory,
-                $this->services,
-            ),
-            new Http2\ServerErrorHandler(),
+            $this->requestHandler,
+            $this->errorHandler,
         );
     }
 

@@ -95,7 +95,14 @@ final readonly class StreamCodec
                     $buffer = $compressor->decompress($buffer);
                 }
 
-                $out->push($encoder->decode($buffer, $type));
+                try {
+                    $out->push($encoder->decode($buffer, $type));
+                } catch (Pipeline\DisposedException) {
+                    // If an exception occurs in the server’s interceptor stack or in the server’s request handler,
+                    // causing us to stop reading the incoming stream, we lose control over the iterator of that queue.
+                    // Therefore, it is normal to handle such an exception here.
+                    return;
+                }
             }
 
             $out->complete();

@@ -36,8 +36,5 @@ interface ServerStream extends \IteratorAggregate
      */
     public function receive(): mixed;
 
-    /**
-     * @throws ServerStreamIsClosed
-     */
     public function close(): void;
 }
