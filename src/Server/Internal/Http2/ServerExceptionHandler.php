@@ -31,10 +31,13 @@ final readonly class ServerExceptionHandler implements HttpExceptionHandler
             $md = $md
                 ->withKey(Metadata\StatusCode::UNIMPLEMENTED)
                 ->withKey(new Metadata\StatusMessage($exception->getMessage()));
+        } else {
+            $md = $md
+                ->withKey(Metadata\StatusCode::INTERNAL);
+        }
 
-            if (($contentType = $md->value('content-type')) !== null) {
-                $md = $md->withKey(new Metadata\ContentType($contentType));
-            }
+        if (($contentType = $md->value('content-type')) !== null) {
+            $md = $md->withKey(new Metadata\ContentType($contentType));
         }
 
         return new Response(headers: $md->kv);
