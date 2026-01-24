@@ -6,6 +6,7 @@ require_once __DIR__ . '/../vendor/autoload.php';
 require_once __DIR__ . '/protobuf.php';
 require_once __DIR__ . '/schema.php';
 
+use Amp\Cancellation;
 use Thesis\Grpc;
 use Thesis\Grpc\Server;
 use Thesis\Grpc\ServerStream;
@@ -32,7 +33,7 @@ final readonly class EchoHandler implements Server\Handler
     ) {}
 
     #[Override]
-    public function handle(ServerStream $stream): void
+    public function handle(ServerStream $stream, Cancellation $cancellation): void
     {
         $request = $stream->receive();
         $response = ($this->handler)($request);
@@ -48,7 +49,7 @@ final readonly class EchoHandler implements Server\Handler
 final readonly class EchoClientStreamHandler implements Server\Handler
 {
     #[Override]
-    public function handle(ServerStream $stream): void
+    public function handle(ServerStream $stream, Cancellation $cancellation): void
     {
         foreach ($stream as $message) {
             dump($message->word);
@@ -66,7 +67,7 @@ final readonly class EchoClientStreamHandler implements Server\Handler
 final readonly class EchoServerStreamHandler implements Server\Handler
 {
     #[Override]
-    public function handle(ServerStream $stream): void
+    public function handle(ServerStream $stream, Cancellation $cancellation): void
     {
         $request = $stream->receive();
         dump($request->word);
@@ -86,7 +87,7 @@ final readonly class EchoServerStreamHandler implements Server\Handler
 final readonly class EchoBidirectionalStreamHandler implements Server\Handler
 {
     #[Override]
-    public function handle(ServerStream $stream): void
+    public function handle(ServerStream $stream, Cancellation $cancellation): void
     {
         dump($stream->receive()->word);
         $stream->send(new EchoResponse('Hello too'));

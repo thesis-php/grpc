@@ -17,6 +17,6 @@ final class EncodingIsNotSupported extends UnimplementedException
     public function __construct(
         public string $encoding,
     ) {
-        parent::__construct("Encoding is not supported by server: '{$encoding}'.");
+        parent::__construct("Encoding is not supported by server: {$encoding}");
     }
 }

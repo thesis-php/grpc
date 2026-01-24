@@ -17,6 +17,6 @@ final class CompressionIsNotSupported extends UnimplementedException
     public function __construct(
         public string $compression,
     ) {
-        parent::__construct("Decompression is not supported by server: '{$compression}'.");
+        parent::__construct("Decompression is not supported by server: {$compression}");
     }
 }

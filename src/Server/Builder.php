@@ -8,7 +8,6 @@ use Amp\Http\Server\Driver\ConnectionLimitingClientFactory;
 use Amp\Http\Server\Driver\ConnectionLimitingServerSocketFactory;
 use Amp\Http\Server\Driver\HttpDriver;
 use Amp\Http\Server\Driver\SocketClientFactory;
-use Amp\Http\Server\ExceptionHandler;
 use Amp\Http\Server\Middleware;
 use Amp\Http\Server\Middleware\ConcurrencyLimitingMiddleware;
 use Amp\Http\Server\Middleware\ExceptionHandlerMiddleware;
@@ -27,6 +26,7 @@ use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Compression\IdentityCompressor;
 use Thesis\Grpc\Encoding\Encoder;
 use Thesis\Grpc\Server;
+use Thesis\Grpc\Server\Internal\Http2\ServerExceptionHandler;
 use Thesis\Grpc\Server\Internal\Transport;
 
 /**
@@ -325,6 +325,9 @@ final class Builder
         ];
 
         $middlewares[] = self::encodingMiddleware($compressors);
+        $middlewares[] = new ExceptionHandlerMiddleware(
+            new ServerExceptionHandler($this->exceptionHandler),
+        );
 
         if ($this->concurrencyLimit !== null) {
             $middlewares[] = new ConcurrencyLimitingMiddleware($this->concurrencyLimit);
@@ -332,10 +335,6 @@ final class Builder
 
         if ($this->proxy !== null) {
             $middlewares[] = new ForwardedMiddleware($this->proxy->headerType, $this->proxy->trustedProxies);
-        }
-
-        if ($this->exceptionHandler !== null) {
-            $middlewares[] = new ExceptionHandlerMiddleware($this->exceptionHandler);
         }
 
         $server = new SocketHttpServer(

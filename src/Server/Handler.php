@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc\Server;
 
+use Amp\Cancellation;
 use Thesis\Grpc\ServerStream;
 
 /**
@@ -16,5 +17,5 @@ interface Handler
     /**
      * @param ServerStream<In, Out> $stream
      */
-    public function handle(ServerStream $stream): void;
+    public function handle(ServerStream $stream, Cancellation $cancellation): void;
 }
