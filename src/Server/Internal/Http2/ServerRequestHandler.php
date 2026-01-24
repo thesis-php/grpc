@@ -12,10 +12,8 @@ use Revolt\EventLoop;
 use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Encoding\Encoder;
 use Thesis\Grpc\Metadata;
-use Thesis\Grpc\Server\InvalidRpcMethod;
 use Thesis\Grpc\Server\MessageCompressorFactory;
 use Thesis\Grpc\Server\MessageEncoderFactory;
-use Thesis\Grpc\Server\Rpc;
 use Thesis\Grpc\Server\Service;
 use Thesis\Grpc\ServerStream;
 
@@ -24,8 +22,7 @@ use Thesis\Grpc\ServerStream;
  */
 final readonly class ServerRequestHandler implements RequestHandler
 {
-    /** @var array<non-empty-string, non-empty-array<non-empty-string, Rpc>> */
-    private array $services;
+    private Router $router;
 
     /**
      * @param list<Service> $services
@@ -35,16 +32,7 @@ final readonly class ServerRequestHandler implements RequestHandler
         private MessageCompressorFactory $compressorFactory,
         array $services,
     ) {
-        $this->services = array_combine(
-            array_map(static fn(Service $service) => $service->name, $services),
-            array_map(
-                static fn(Service $service) => array_combine(
-                    array_map(static fn(Rpc $rpc) => $rpc->handle->method, $service->handlers),
-                    $service->handlers,
-                ),
-                $services,
-            ),
-        );
+        $this->router = new Router($services);
     }
 
     #[\Override]
@@ -60,29 +48,20 @@ final readonly class ServerRequestHandler implements RequestHandler
             $md->encoding(Encoder::DEFAULT_ENCODING),
         );
 
-        $path = $request->getUri()->getPath();
+        $rpc = $this->router->route($request);
 
-        if ($path === '' || $path === '/') {
-            throw new InvalidRpcMethod("Malformed method name: {$path}");
-        }
-
-        $endpoint = Endpoint::parse($path);
-
-        $methods = $this->services[$endpoint->service] ?? throw new InvalidRpcMethod("Unknown service {$endpoint->service}");
-        $rpc = $methods[$endpoint->method] ?? throw new InvalidRpcMethod("Unknown method {$endpoint->method} for service {$endpoint->service}");
-
-        $streams = new StreamFactory(
+        /** @var array<non-empty-string, StreamFactory> $streams */
+        static $streams = [];
+        $factory = $streams["{$encoder->name()}{$compressor->name()}"] ??= new StreamFactory(
             $encoder,
             $compressor,
         );
 
-        $response = new Response();
-
         /** @var ServerStream<object, object> $stream */
-        $stream = $streams->create(
+        $stream = $factory->create(
             $rpc->handle,
             $request,
-            $response,
+            $response = new Response(),
         );
 
         $cancellation = new NullCancellation();
