@@ -152,12 +152,19 @@ final class Builder
     /**
      * @no-named-arguments
      */
-    public function withServices(Service ...$services): self
+    public function withServices(ServiceRegistry ...$services): self
     {
         $builder = clone $this;
         $builder->services = [
             ...$builder->services,
-            ...$services,
+            ...array_values(
+                array_merge(
+                    ...array_map(
+                        static fn(ServiceRegistry $registry) => iterator_to_array($registry->services()),
+                        $services,
+                    ),
+                ),
+            ),
         ];
 
         return $builder;
