@@ -19,6 +19,10 @@ $encoder = new ProtobufEncoder(
     Reflection\Reflector::build(),
 );
 
+/**
+ * @generated
+ * @api
+ */
 interface EchoServer
 {
     public function echo(EchoRequest $request, Cancellation $cancellation): EchoResponse;
@@ -40,6 +44,7 @@ interface EchoServer
 }
 
 /**
+ * @generated
  * @api
  */
 final readonly class EchoServiceRegistrar implements Server\ServiceRegistry
@@ -116,6 +121,7 @@ final readonly class EchoServerImpl implements EchoServer
 }
 
 /**
+ * @generated
  * @internal
  * @template-implements Server\Handler<EchoRequest, EchoResponse>
  */
@@ -139,6 +145,7 @@ final readonly class UnaryEchoHandler implements Server\Handler
 }
 
 /**
+ * @generated
  * @internal
  * @template-implements Server\Handler<EchoRequest, EchoResponse>
  */
@@ -161,6 +168,7 @@ final readonly class ClientStreamEchoHandler implements Server\Handler
 }
 
 /**
+ * @generated
  * @internal
  * @template-implements Server\Handler<EchoRequest, EchoResponse>
  */
@@ -188,6 +196,7 @@ final readonly class ServerStreamEchoHandler implements Server\Handler
 }
 
 /**
+ * @generated
  * @internal
  * @template-implements Server\Handler<EchoRequest, EchoResponse>
  */
