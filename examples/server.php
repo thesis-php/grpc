@@ -9,7 +9,6 @@ require_once __DIR__ . '/schema.php';
 use Amp\Cancellation;
 use Thesis\Grpc;
 use Thesis\Grpc\Server;
-use Thesis\Grpc\ServerStream;
 use Thesis\Protobuf;
 use Thesis\Protobuf\Reflection;
 use function Amp\trapSignal;
@@ -28,19 +27,23 @@ interface EchoServer
     public function echo(EchoRequest $request, Cancellation $cancellation): EchoResponse;
 
     /**
-     * @param iterable<array-key, EchoRequest> $stream
+     * @param Server\ClientStreamChannel<EchoRequest, EchoResponse> $stream
      */
-    public function clientStream(iterable $stream, Cancellation $cancellation): EchoResponse;
+    public function clientStream(Server\ClientStreamChannel $stream, Cancellation $cancellation): void;
 
     /**
-     * @return iterable<array-key, EchoResponse>
+     * @param Server\ServerStreamChannel<EchoRequest, EchoResponse> $stream
      */
-    public function serverStream(EchoRequest $request, Cancellation $cancellation): iterable;
+    public function serverStream(
+        EchoRequest $request,
+        Server\ServerStreamChannel $stream,
+        Cancellation $cancellation,
+    ): void;
 
     /**
-     * @param ServerStream<EchoRequest, EchoResponse> $stream
+     * @param Server\BidirectionalStreamChannel<EchoRequest, EchoResponse> $stream
      */
-    public function boundedStream(ServerStream $stream, Cancellation $cancellation): void;
+    public function boundedStream(Server\BidirectionalStreamChannel $stream, Cancellation $cancellation): void;
 }
 
 /**
@@ -59,19 +62,19 @@ final readonly class EchoServiceRegistrar implements Server\ServiceRegistry
         yield new Server\Service('test.v1.EchoController', [
             new Server\Rpc(
                 new Server\Handle('Echo', EchoRequest::class),
-                new UnaryEchoHandler($this->server->echo(...)),
+                new Server\UnaryHandler($this->server->echo(...)),
             ),
             new Server\Rpc(
                 new Server\Handle('ClientStream', EchoRequest::class),
-                new ClientStreamEchoHandler($this->server->clientStream(...)),
+                new Server\ClientStreamHandler($this->server->clientStream(...)),
             ),
             new Server\Rpc(
                 new Server\Handle('ServerStream', EchoRequest::class),
-                new ServerStreamEchoHandler($this->server->serverStream(...)),
+                new Server\ServerStreamHandler($this->server->serverStream(...)),
             ),
             new Server\Rpc(
                 new Server\Handle('BoundedStream', EchoRequest::class),
-                new BoundedStreamEchoHandler($this->server->boundedStream(...)),
+                new Server\BidirectionalStreamHandler($this->server->boundedStream(...)),
             ),
         ]);
     }
@@ -89,7 +92,7 @@ final readonly class EchoServerImpl implements EchoServer
     }
 
     #[Override]
-    public function clientStream(iterable $stream, Cancellation $cancellation): EchoResponse
+    public function clientStream(Server\ClientStreamChannel $stream, Cancellation $cancellation): void
     {
         $join = [];
 
@@ -97,19 +100,24 @@ final readonly class EchoServerImpl implements EchoServer
             $join[] = $message->word;
         }
 
-        return new EchoResponse(implode(', ', $join));
+        $stream->close(new EchoResponse(implode(', ', $join)));
     }
 
     #[Override]
-    public function serverStream(EchoRequest $request, Cancellation $cancellation): iterable
-    {
+    public function serverStream(
+        EchoRequest $request,
+        Server\ServerStreamChannel $stream,
+        Cancellation $cancellation,
+    ): void {
         for ($i = 0; $i < 5; ++$i) {
-            yield new EchoResponse("{$request->word}#{$i}");
+            $stream->send(new EchoResponse("{$request->word}#{$i}"));
         }
+
+        $stream->close();
     }
 
     #[Override]
-    public function boundedStream(ServerStream $stream, Cancellation $cancellation): void
+    public function boundedStream(Server\BidirectionalStreamChannel $stream, Cancellation $cancellation): void
     {
         dump($stream->receive()->word);
         $stream->send(new EchoResponse('Hello too'));
@@ -117,103 +125,6 @@ final readonly class EchoServerImpl implements EchoServer
         $stream->send(new EchoResponse('I am ok'));
         dump($stream->receive()->word);
         $stream->send(new EchoResponse('Bye bye'));
-    }
-}
-
-/**
- * @generated
- * @internal
- * @template-implements Server\Handler<EchoRequest, EchoResponse>
- */
-final readonly class UnaryEchoHandler implements Server\Handler
-{
-    /**
-     * @param Closure(EchoRequest, Cancellation): EchoResponse $handler
-     */
-    public function __construct(
-        private Closure $handler,
-    ) {}
-
-    #[Override]
-    public function handle(ServerStream $stream, Cancellation $cancellation): void
-    {
-        $request = $stream->receive();
-        $response = ($this->handler)($request, $cancellation);
-        $stream->send($response);
-        $stream->close();
-    }
-}
-
-/**
- * @generated
- * @internal
- * @template-implements Server\Handler<EchoRequest, EchoResponse>
- */
-final readonly class ClientStreamEchoHandler implements Server\Handler
-{
-    /**
-     * @param Closure(iterable<array-key, EchoRequest>, Cancellation): EchoResponse $handler
-     */
-    public function __construct(
-        private Closure $handler,
-    ) {}
-
-    #[Override]
-    public function handle(ServerStream $stream, Cancellation $cancellation): void
-    {
-        $response = ($this->handler)($stream->getIterator(), $cancellation);
-        $stream->send($response);
-        $stream->close();
-    }
-}
-
-/**
- * @generated
- * @internal
- * @template-implements Server\Handler<EchoRequest, EchoResponse>
- */
-final readonly class ServerStreamEchoHandler implements Server\Handler
-{
-    /**
-     * @param Closure(EchoRequest, Cancellation): iterable<array-key, EchoResponse> $handler
-     */
-    public function __construct(
-        private Closure $handler,
-    ) {}
-
-    #[Override]
-    public function handle(ServerStream $stream, Cancellation $cancellation): void
-    {
-        $request = $stream->receive();
-        $responses = ($this->handler)($request, $cancellation);
-
-        foreach ($responses as $response) {
-            $stream->send($response);
-        }
-
-        $stream->close();
-    }
-}
-
-/**
- * @generated
- * @internal
- * @template-implements Server\Handler<EchoRequest, EchoResponse>
- */
-final readonly class BoundedStreamEchoHandler implements Server\Handler
-{
-    /**
-     * @param Closure(ServerStream<EchoRequest, EchoResponse>, Cancellation): void $handler
-     */
-    public function __construct(
-        private Closure $handler,
-    ) {}
-
-    #[Override]
-    public function handle(ServerStream $stream, Cancellation $cancellation): void
-    {
-        ($this->handler)($stream, $cancellation);
-        $stream->close();
     }
 }
 
