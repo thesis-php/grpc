@@ -22,11 +22,11 @@ final readonly class BidirectionalStreamChannel implements \IteratorAggregate
     ) {}
 
     /**
-     * @param TResponse $request
+     * @param TResponse $response
      */
-    public function send(object $request): void
+    public function send(object $response): void
     {
-        $this->stream->send($request);
+        $this->stream->send($response);
     }
 
     /**
