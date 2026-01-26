@@ -109,10 +109,7 @@ final readonly class EchoServerImpl implements EchoServer
         Server\ServerStreamChannel $stream,
         Cancellation $cancellation,
     ): void {
-        for ($i = 0; $i < 5; ++$i) {
-            $stream->send(new EchoResponse("{$request->word}#{$i}"));
-        }
-
+        $stream->send(...array_map(static fn(int $i) => new EchoResponse("{$request->word}#{$i}"), range(0, 5)));
         $stream->close();
     }
 

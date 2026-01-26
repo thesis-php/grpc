@@ -116,10 +116,9 @@ dump($echoClient->echo(new EchoRequest('Ping')));
 
 // Client stream request
 $clientStream = $echoClient->clientStream();
-
-for ($i = 0; $i < 5; ++$i) {
-    $clientStream->send(new EchoRequest("req#{$i}"));
-}
+$clientStream->send(
+    ...array_map(static fn(int $i) => new EchoRequest("req#{$i}"), range(0, 5)),
+);
 
 dump($clientStream->close());
 
