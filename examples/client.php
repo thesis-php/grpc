@@ -9,7 +9,6 @@ require_once __DIR__ . '/schema.php';
 use Amp\Cancellation;
 use Amp\NullCancellation;
 use Thesis\Grpc\Client;
-use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Compression\GzipCompressor;
 use Thesis\Protobuf;
 use Thesis\Protobuf\Reflection;
@@ -31,123 +30,77 @@ final readonly class EchoClient
 
     public function echo(EchoRequest $request, Cancellation $cancellation = new NullCancellation()): EchoResponse
     {
+        /** @var Client\Invoke<EchoRequest, EchoResponse> $invoke */
+        $invoke = new Client\Invoke(
+            method: 'test.v1.EchoController/Echo',
+            type: EchoResponse::class,
+        );
+
         return $this->client->invoke(
             request: $request,
-            invoke: new Client\Invoke(
-                method: 'test.v1.EchoController/Echo',
-                type: EchoResponse::class,
-            ),
+            invoke: $invoke,
             cancellation: $cancellation,
         );
-    }
-
-    public function clientStream(Cancellation $cancellation = new NullCancellation()): EchoClientClientStream
-    {
-        $stream = $this->client->createStream(
-            invoke: new Client\Invoke(
-                method: 'test.v1.EchoController/ClientStream',
-                type: EchoResponse::class,
-            ),
-            cancellation: $cancellation,
-        );
-
-        /** @phpstan-ignore argument.type */
-        return new EchoClientClientStream($stream);
     }
 
     /**
-     * @return iterable<array-key, EchoResponse>
+     * @return Client\ClientStreamChannel<EchoRequest, EchoResponse>
      */
-    public function serverStream(EchoRequest $request, Cancellation $cancellation = new NullCancellation()): iterable
+    public function clientStream(Cancellation $cancellation = new NullCancellation()): Client\ClientStreamChannel
     {
+        /** @var Client\Invoke<EchoRequest, EchoResponse> $invoke */
+        $invoke = new Client\Invoke(
+            method: 'test.v1.EchoController/ClientStream',
+            type: EchoResponse::class,
+        );
+
         $stream = $this->client->createStream(
-            invoke: new Client\Invoke(
-                method: 'test.v1.EchoController/ServerStream',
-                type: EchoResponse::class,
-            ),
+            invoke: $invoke,
+            cancellation: $cancellation,
+        );
+
+        return new Client\ClientStreamChannel($stream);
+    }
+
+    /**
+     * @return Client\ServerStreamChannel<EchoRequest, EchoResponse>
+     */
+    public function serverStream(EchoRequest $request, Cancellation $cancellation = new NullCancellation()): Client\ServerStreamChannel
+    {
+        /** @var Client\Invoke<EchoRequest, EchoResponse> $invoke */
+        $invoke = new Client\Invoke(
+            method: 'test.v1.EchoController/ServerStream',
+            type: EchoResponse::class,
+        );
+
+        $stream = $this->client->createStream(
+            invoke: $invoke,
             cancellation: $cancellation,
         );
 
         $stream->send($request);
         $stream->close();
 
-        return $stream->getIterator();
+        return new Client\ServerStreamChannel($stream);
     }
 
-    public function duplexStream(Cancellation $cancellation = new NullCancellation()): EchoClientDuplexStream
+    /**
+     * @return Client\BidirectionalStreamChannel<EchoRequest, EchoResponse>
+     */
+    public function duplexStream(Cancellation $cancellation = new NullCancellation()): Client\BidirectionalStreamChannel
     {
+        /** @var Client\Invoke<EchoRequest, EchoResponse> $invoke */
+        $invoke = new Client\Invoke(
+            method: 'test.v1.EchoController/BoundedStream',
+            type: EchoResponse::class,
+        );
+
         $stream = $this->client->createStream(
-            invoke: new Client\Invoke(
-                method: 'test.v1.EchoController/BoundedStream',
-                type: EchoResponse::class,
-            ),
+            invoke: $invoke,
             cancellation: $cancellation,
         );
 
-        /** @phpstan-ignore argument.type */
-        return new EchoClientDuplexStream($stream);
-    }
-}
-
-/**
- * @generated
- * @api
- */
-final readonly class EchoClientClientStream
-{
-    /**
-     * @param ClientStream<EchoRequest, EchoResponse> $stream
-     */
-    public function __construct(
-        private ClientStream $stream,
-    ) {}
-
-    public function send(EchoRequest $request): void
-    {
-        $this->stream->send($request);
-    }
-
-    public function close(): EchoResponse
-    {
-        $this->stream->close();
-
-        return $this->stream->receive();
-    }
-}
-
-/**
- * @generated
- * @api
- * @template-implements \IteratorAggregate<array-key, EchoResponse>
- */
-final readonly class EchoClientDuplexStream implements IteratorAggregate
-{
-    /**
-     * @param ClientStream<EchoRequest, EchoResponse> $stream
-     */
-    public function __construct(
-        private ClientStream $stream,
-    ) {}
-
-    public function send(EchoRequest $request): void
-    {
-        $this->stream->send($request);
-    }
-
-    public function receive(): EchoResponse
-    {
-        return $this->stream->receive();
-    }
-
-    public function close(): void
-    {
-        $this->stream->close();
-    }
-
-    #[Override]
-    public function getIterator(): Traversable
-    {
-        return $this->stream->getIterator();
+        return new Client\BidirectionalStreamChannel($stream);
     }
 }
 
