@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Thesis\Grpc\Server;
+
+use Amp\Cancellation;
+use Thesis\Grpc\ServerStream;
+
+/**
+ * @api
+ * @template TRequest of object
+ * @template TResponse of object
+ * @template-implements Handler<TRequest, TResponse>
+ */
+final readonly class UnaryHandler implements Handler
+{
+    /**
+     * @param \Closure(TRequest, Cancellation): TResponse $handler
+     */
+    public function __construct(
+        private \Closure $handler,
+    ) {}
+
+    #[\Override]
+    public function handle(ServerStream $stream, Cancellation $cancellation): void
+    {
+        $request = $stream->receive();
+        $response = ($this->handler)($request, $cancellation);
+        $stream->send($response);
+        $stream->close();
+    }
+}
