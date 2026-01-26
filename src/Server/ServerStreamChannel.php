@@ -21,11 +21,14 @@ final readonly class ServerStreamChannel
     ) {}
 
     /**
-     * @param TResponse $response
+     * @no-named-arguments
+     * @param TResponse ...$responses
      */
-    public function send(object $response): void
+    public function send(object ...$responses): void
     {
-        $this->stream->send($response);
+        foreach ($responses as $response) {
+            $this->stream->send($response);
+        }
     }
 
     public function close(): void

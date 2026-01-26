@@ -22,11 +22,14 @@ final readonly class BidirectionalStreamChannel implements \IteratorAggregate
     ) {}
 
     /**
-     * @param TRequest $request
+     * @no-named-arguments
+     * @param TRequest ...$requests
      */
-    public function send(object $request): void
+    public function send(object ...$requests): void
     {
-        $this->stream->send($request);
+        foreach ($requests as $request) {
+            $this->stream->send($request);
+        }
     }
 
     /**
