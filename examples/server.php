@@ -24,12 +24,12 @@ $encoder = new ProtobufEncoder(
  */
 interface EchoServer
 {
-    public function echo(EchoRequest $request, Cancellation $cancellation): EchoResponse;
+    public function echo(EchoRequest $request, Grpc\Metadata $md, Cancellation $cancellation): EchoResponse;
 
     /**
      * @param Server\ClientStreamChannel<EchoRequest, EchoResponse> $stream
      */
-    public function clientStream(Server\ClientStreamChannel $stream, Cancellation $cancellation): void;
+    public function clientStream(Server\ClientStreamChannel $stream, Grpc\Metadata $md, Cancellation $cancellation): void;
 
     /**
      * @param Server\ServerStreamChannel<EchoRequest, EchoResponse> $stream
@@ -37,13 +37,14 @@ interface EchoServer
     public function serverStream(
         EchoRequest $request,
         Server\ServerStreamChannel $stream,
+        Grpc\Metadata $md,
         Cancellation $cancellation,
     ): void;
 
     /**
      * @param Server\BidirectionalStreamChannel<EchoRequest, EchoResponse> $stream
      */
-    public function boundedStream(Server\BidirectionalStreamChannel $stream, Cancellation $cancellation): void;
+    public function boundedStream(Server\BidirectionalStreamChannel $stream, Grpc\Metadata $md, Cancellation $cancellation): void;
 }
 
 /**
@@ -86,13 +87,13 @@ final readonly class EchoServiceRegistrar implements Server\ServiceRegistry
 final readonly class EchoServerImpl implements EchoServer
 {
     #[Override]
-    public function echo(EchoRequest $request, Cancellation $cancellation): EchoResponse
+    public function echo(EchoRequest $request, Grpc\Metadata $md, Cancellation $cancellation): EchoResponse
     {
         return new EchoResponse('Pong');
     }
 
     #[Override]
-    public function clientStream(Server\ClientStreamChannel $stream, Cancellation $cancellation): void
+    public function clientStream(Server\ClientStreamChannel $stream, Grpc\Metadata $md, Cancellation $cancellation): void
     {
         $join = [];
 
@@ -107,6 +108,7 @@ final readonly class EchoServerImpl implements EchoServer
     public function serverStream(
         EchoRequest $request,
         Server\ServerStreamChannel $stream,
+        Grpc\Metadata $md,
         Cancellation $cancellation,
     ): void {
         $stream->send(...array_map(static fn(int $i) => new EchoResponse("{$request->word}#{$i}"), range(0, 5)));
@@ -114,7 +116,7 @@ final readonly class EchoServerImpl implements EchoServer
     }
 
     #[Override]
-    public function boundedStream(Server\BidirectionalStreamChannel $stream, Cancellation $cancellation): void
+    public function boundedStream(Server\BidirectionalStreamChannel $stream, Grpc\Metadata $md, Cancellation $cancellation): void
     {
         dump($stream->receive()->word);
         $stream->send(new EchoResponse('Hello too'));

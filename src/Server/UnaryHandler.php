@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Thesis\Grpc\Server;
 
 use Amp\Cancellation;
+use Thesis\Grpc\Metadata;
 use Thesis\Grpc\ServerStream;
 
 /**
@@ -16,17 +17,17 @@ use Thesis\Grpc\ServerStream;
 final readonly class UnaryHandler implements Handler
 {
     /**
-     * @param \Closure(TRequest, Cancellation): TResponse $handler
+     * @param \Closure(TRequest, Metadata, Cancellation): TResponse $handler
      */
     public function __construct(
         private \Closure $handler,
     ) {}
 
     #[\Override]
-    public function handle(ServerStream $stream, Cancellation $cancellation): void
+    public function handle(ServerStream $stream, Metadata $md, Cancellation $cancellation): void
     {
         $request = $stream->receive();
-        $response = ($this->handler)($request, $cancellation);
+        $response = ($this->handler)($request, $md, $cancellation);
         $stream->send($response);
         $stream->close();
     }

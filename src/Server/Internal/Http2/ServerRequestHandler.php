@@ -108,6 +108,7 @@ final readonly class ServerRequestHandler implements RequestHandler
                 Cancellation $cancellation,
             ) => $rpc->handler->handle(
                 $stream,
+                $md,
                 $cancellation,
             ),
         );
