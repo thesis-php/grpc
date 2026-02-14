@@ -27,8 +27,6 @@ final class SecureTransportCredentials implements
 
     private bool $verifyPeer = true;
 
-    private bool $verifyPeerName = true;
-
     private ?Certificate $certificate = null;
 
     /** @var array<non-empty-string, Certificate> */
@@ -72,14 +70,6 @@ final class SecureTransportCredentials implements
         return $credentials;
     }
 
-    public function withVerifyPeerName(bool $verifyPeerName = true): self
-    {
-        $credentials = clone $this;
-        $credentials->verifyPeerName = $verifyPeerName;
-
-        return $credentials;
-    }
-
     public function withCertificate(Certificate $certificate): self
     {
         $credentials = clone $this;
@@ -109,16 +99,11 @@ final class SecureTransportCredentials implements
             ->withCaFile($this->caCert)
             ->withCaPath($this->caPath)
             ->withoutPeerVerification()
-            ->withoutPeerNameVerification()
             ->withCertificate($this->certificate)
             ->withApplicationLayerProtocols(['2']);
 
         if ($this->verifyPeer) {
             $context = $context->withPeerVerification();
-        }
-
-        if ($this->verifyPeerName) {
-            $context = $context->withPeerNameVerification();
         }
 
         return $context;
@@ -131,17 +116,12 @@ final class SecureTransportCredentials implements
             ->withCaFile($this->caCert)
             ->withCaPath($this->caPath)
             ->withoutPeerVerification()
-            ->withoutPeerNameVerification()
             ->withPeerName($this->peerName)
             ->withCertificates($this->certificates)
             ->withApplicationLayerProtocols(['2']);
 
         if ($this->verifyPeer) {
             $context = $context->withPeerVerification();
-        }
-
-        if ($this->verifyPeerName) {
-            $context = $context->withPeerNameVerification();
         }
 
         return $context;
