@@ -11,11 +11,11 @@ use Thesis\Grpc\Encoding\Encoder;
  */
 final readonly class MessageEncoderFactory
 {
-    /** @var non-empty-array<non-empty-string, Encoder> */
+    /** @var array<non-empty-string, Encoder> */
     private array $encoders;
 
     /**
-     * @param non-empty-list<Encoder> $encoders
+     * @param list<Encoder> $encoders
      */
     public function __construct(array $encoders)
     {

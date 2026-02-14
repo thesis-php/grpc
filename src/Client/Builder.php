@@ -14,6 +14,7 @@ use Thesis\Grpc\Client;
 use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Compression\IdentityCompressor;
 use Thesis\Grpc\Encoding\Encoder;
+use Thesis\Grpc\Protobuf\ProtobufEncoder;
 
 /**
  * @api
@@ -43,9 +44,12 @@ final class Builder
 
     private ?SocketConnector $connector = null;
 
-    public function __construct(
-        private Encoder $encoder,
-    ) {}
+    private Encoder $encoder;
+
+    public function __construct(?Encoder $encoder = null)
+    {
+        $this->encoder = $encoder ?? ProtobufEncoder::default();
+    }
 
     public function withEncoding(Encoder $encoder): self
     {

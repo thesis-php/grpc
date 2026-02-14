@@ -24,6 +24,7 @@ use Psr\Log\NullLogger;
 use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Compression\IdentityCompressor;
 use Thesis\Grpc\Encoding\Encoder;
+use Thesis\Grpc\Protobuf\ProtobufEncoder;
 use Thesis\Grpc\Server;
 use Thesis\Grpc\Server\Internal\Http2\ServerErrorHandler;
 use Thesis\Grpc\Server\Internal\Http2\ServerRequestHandler;
@@ -51,7 +52,7 @@ final class Builder
     /** @var list<Compressor> */
     private array $compressors = [];
 
-    /** @var list<Encoder> */
+    /** @var array<non-empty-string, Encoder> */
     private array $encoders = [];
 
     /** @var list<Middleware> */
@@ -93,6 +94,12 @@ final class Builder
     /** @var positive-int */
     private int $bodySizeLimit = self::DEFAULT_BODY_SIZE_LIMIT;
 
+    public function __construct(?Encoder $encoder = null)
+    {
+        $encoder ??= ProtobufEncoder::default();
+        $this->encoders[$encoder->name()] = $encoder;
+    }
+
     /**
      * @no-named-arguments
      */
@@ -113,10 +120,10 @@ final class Builder
     public function withEncoders(Encoder ...$encoders): self
     {
         $builder = clone $this;
-        $builder->encoders = [
-            ...$builder->encoders,
-            ...$encoders,
-        ];
+
+        foreach ($encoders as $encoder) {
+            $builder->encoders[$encoder->name()] = $encoder;
+        }
 
         return $builder;
     }
@@ -288,12 +295,6 @@ final class Builder
 
     public function build(): Server
     {
-        $encoders = $this->encoders;
-        // Try to search thesis/grpc-proto and set it.
-        if ($encoders === []) {
-            throw new \RuntimeException('No encodings has been set. Please specify at least one.');
-        }
-
         $logger = $this->logger ?? new NullLogger();
 
         $serverSocketFactory = new ConnectionLimitingServerSocketFactory(
@@ -361,7 +362,7 @@ final class Builder
         return new Server(
             server: $server,
             requestHandler: new ServerRequestHandler(
-                encoderFactory: new MessageEncoderFactory($encoders),
+                encoderFactory: new MessageEncoderFactory(array_values($this->encoders)),
                 compressorFactory: new MessageCompressorFactory($compressors),
                 services: $this->services,
                 interceptors: $this->interceptors,

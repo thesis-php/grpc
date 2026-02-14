@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
+namespace Thesis\Grpc\Protobuf;
+
 use Thesis\Grpc\Encoding;
 use Thesis\Protobuf;
 use Thesis\Protobuf\Reflection;
-
-final readonly class Stub {}
 
 /**
  * @api
@@ -18,13 +18,21 @@ final readonly class ProtobufEncoder implements Encoding\Encoder
         private Reflection\Reflector $reflector,
     ) {}
 
-    #[Override]
+    public static function default(): self
+    {
+        return new self(
+            new Protobuf\Serializer(),
+            Reflection\Reflector::build(),
+        );
+    }
+
+    #[\Override]
     public function name(): string
     {
         return 'proto';
     }
 
-    #[Override]
+    #[\Override]
     public function encode(object $request): string
     {
         return $this->serializer->serialize(
@@ -32,15 +40,19 @@ final readonly class ProtobufEncoder implements Encoding\Encoder
         );
     }
 
-    #[Override]
+    #[\Override]
     public function decode(string $buffer, string $classType): object
     {
-        return $this->reflector->map(
-            $this->serializer->deserialize(
-                $this->reflector->type($classType),
-                $buffer,
-            ),
-            $classType,
-        );
+        try {
+            return $this->reflector->map(
+                $this->serializer->deserialize(
+                    $this->reflector->type($classType),
+                    $buffer,
+                ),
+                $classType,
+            );
+        } catch (\Throwable $e) {
+            throw new Encoding\DecodingFailed($e->getMessage(), (int) $e->getCode(), $e);
+        }
     }
 }

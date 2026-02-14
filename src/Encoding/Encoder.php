@@ -19,6 +19,7 @@ interface Encoder
     /**
      * @template T of object
      * @param T $request
+     * @throws EncodingFailed
      */
     public function encode(object $request): string;
 
@@ -26,6 +27,7 @@ interface Encoder
      * @template T of object
      * @param class-string<T> $classType
      * @return T
+     * @throws DecodingFailed
      */
     public function decode(string $buffer, string $classType): object;
 }
