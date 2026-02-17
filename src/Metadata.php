@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc;
 
+use Google\Rpc\Code;
+
 /**
  * @api
  * @template-implements \IteratorAggregate<non-empty-string, list<string>>
@@ -113,6 +115,14 @@ final class Metadata implements
                 ...$values,
             ];
         }
+    }
+
+    public function status(): Metadata\Status
+    {
+        $code = (int) ($this->value('grpc-status') ?? Code::UNKNOWN->value);
+        $message = $this->value('grpc-message') ?? '';
+
+        return new Metadata\Status(Code::tryFrom($code) ?? Code::UNKNOWN, $message);
     }
 
     /**

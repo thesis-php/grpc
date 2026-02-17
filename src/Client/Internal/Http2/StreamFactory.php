@@ -31,6 +31,7 @@ final readonly class StreamFactory
     public function __construct(
         private DelegateHttpClient $http,
         private UriFactory $uri,
+        private ErrorHandler $errors,
         Encoder $encoder,
         Compressor $compressor,
     ) {
@@ -52,7 +53,7 @@ final readonly class StreamFactory
         Cancellation $cancellation = new NullCancellation(),
     ): ClientStream {
         /** @var Pipeline\Queue<In> $send */
-        $send = new Pipeline\Queue();
+        $send = new Pipeline\Queue(1);
 
         $request = new Request(
             uri: $this->uri->create($invoke->method),
@@ -68,9 +69,10 @@ final readonly class StreamFactory
         $response = async($this->http->request(...), $request, $cancellation);
 
         return new ConcurrentClientStream(
-            $response,
-            $send,
-            fn(Response $response) => $this->codec->decode($response->getBody(), $invoke->type),
+            responseFuture: $response,
+            send: $send,
+            decode: fn(Response $response) => $this->codec->decode($response->getBody(), $invoke->type),
+            errors: $this->errors,
         );
     }
 }

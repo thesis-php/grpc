@@ -7,8 +7,10 @@ namespace Thesis\Grpc;
 use Amp\Cancellation;
 use Amp\Http\Client\DelegateHttpClient;
 use Amp\NullCancellation;
+use Thesis\Grpc\Client\CallError;
 use Thesis\Grpc\Client\Internal\Http2;
 use Thesis\Grpc\Exception\ClientStreamIsClosed;
+use Thesis\Protobuf\Decoder;
 
 /**
  * @api
@@ -28,6 +30,7 @@ final readonly class Client
         DelegateHttpClient $client,
         Encoding\Encoder $encoder,
         Compression\Compressor $compressor,
+        Decoder $protobuf,
         array $interceptors = [],
     ) {
         $this->interceptor = new Http2\InterceptorComposer([
@@ -40,6 +43,7 @@ final readonly class Client
         $this->streams = new Http2\StreamFactory(
             http: $client,
             uri: new Http2\UriFactory($host),
+            errors: new Http2\ErrorHandler($protobuf),
             encoder: $encoder,
             compressor: $compressor,
         );
@@ -51,6 +55,7 @@ final readonly class Client
      * @param In $request
      * @param Client\Invoke<In, Out> $invoke
      * @return Out
+     * @throws CallError
      * @throws ClientStreamIsClosed
      */
     public function invoke(

@@ -29,8 +29,10 @@
         "psr/log": "^3.0",
         "revolt/event-loop": "1.0.8",
         "thesis/endian": "^0.3.0",
+        "thesis/googleapis-rpc-types": "^0.1.2",
         "thesis/package-version": "^0.1.2",
-        "thesis/protobuf": "^0.1.1"
+        "thesis/protobuf": "^0.1.5",
+        "thesis/protobuf-known-types": "^0.1.2"
     },
     "require-dev": {
         "phpunit/phpunit": "^12.4",

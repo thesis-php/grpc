@@ -6,6 +6,7 @@ namespace Thesis\Grpc;
 
 use Amp\Cancellation;
 use Amp\NullCancellation;
+use Thesis\Grpc\Client\CallError;
 use Thesis\Grpc\Exception\ClientStreamIsClosed;
 
 /**
@@ -24,7 +25,7 @@ interface ClientStream extends \IteratorAggregate
 
     /**
      * @return Out
-     * @throws ClientStreamIsClosed
+     * @throws CallError
      */
     public function receive(): mixed;
 

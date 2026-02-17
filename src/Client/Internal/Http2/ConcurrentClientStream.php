@@ -9,6 +9,8 @@ use Amp\Future;
 use Amp\Http\Client\Response;
 use Amp\NullCancellation;
 use Amp\Pipeline;
+use Google\Rpc\Code;
+use Thesis\Grpc\Client\CallError;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Exception\ClientStreamIsClosed;
 use Thesis\Grpc\Metadata;
@@ -21,10 +23,10 @@ use Thesis\Grpc\Metadata;
  */
 final class ConcurrentClientStream implements ClientStream
 {
-    private ?Response $response = null;
+    private Response $response { get => $this->response ??= $this->responseFuture->await(); } // @phpstan-ignore property.uninitialized
 
-    /** @var ?Pipeline\ConcurrentIterator<Out> */
-    private ?Pipeline\ConcurrentIterator $recv = null;
+    /** @var Pipeline\ConcurrentIterator<Out> */
+    private Pipeline\ConcurrentIterator $recv { get => $this->recv ??= ($this->decode)($this->response); } // @phpstan-ignore property.uninitialized
 
     /**
      * @param Future<Response> $responseFuture
@@ -35,6 +37,7 @@ final class ConcurrentClientStream implements ClientStream
         private readonly Future $responseFuture,
         private readonly Pipeline\Queue $send,
         private readonly \Closure $decode,
+        private readonly ErrorHandler $errors,
     ) {}
 
     #[\Override]
@@ -50,25 +53,26 @@ final class ConcurrentClientStream implements ClientStream
     #[\Override]
     public function receive(): mixed
     {
-        $recv = $this->doGetReceiver();
-
-        if (!$recv->continue()) {
-            throw new ClientStreamIsClosed();
+        if (!$this->recv->continue()) {
+            throw $this->errors->handle(
+                $this->headers(),
+                $this->trailers(),
+            ) ?? new CallError(Code::UNKNOWN);
         }
 
-        return $recv->getValue();
+        return $this->recv->getValue();
     }
 
     #[\Override]
     public function headers(): Metadata
     {
-        return new Metadata($this->doGetResponse()->getHeaders());
+        return new Metadata($this->response->getHeaders());
     }
 
     #[\Override]
     public function trailers(Cancellation $cancellation = new NullCancellation()): Metadata
     {
-        return new Metadata($this->doGetResponse()->getTrailers()->await($cancellation)->getHeaders());
+        return new Metadata($this->response->getTrailers()->await($cancellation)->getHeaders());
     }
 
     #[\Override]
@@ -84,19 +88,10 @@ final class ConcurrentClientStream implements ClientStream
     #[\Override]
     public function getIterator(): \Traversable
     {
-        return $this->doGetReceiver()->getIterator();
-    }
+        yield from $this->recv;
 
-    private function doGetResponse(): Response
-    {
-        return $this->response ??= $this->responseFuture->await();
-    }
-
-    /**
-     * @return Pipeline\ConcurrentIterator<Out>
-     */
-    private function doGetReceiver(): Pipeline\ConcurrentIterator
-    {
-        return $this->recv ??= ($this->decode)($this->doGetResponse());
+        if (($error = $this->errors->handle($this->headers(), $this->trailers())) !== null) {
+            throw $error;
+        }
     }
 }

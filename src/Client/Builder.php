@@ -15,6 +15,7 @@ use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Compression\IdentityCompressor;
 use Thesis\Grpc\Encoding\Encoder;
 use Thesis\Grpc\Protobuf\ProtobufEncoder;
+use Thesis\Protobuf\Decoder;
 
 /**
  * @api
@@ -44,11 +45,19 @@ final class Builder
 
     private ?SocketConnector $connector = null;
 
-    private Encoder $encoder;
+    private ?Encoder $encoder = null;
 
-    public function __construct(?Encoder $encoder = null)
+    /**
+     * Required for decoding the `grpc-status-details-bin` header, `status`, and `details`.
+     */
+    private ?Decoder $protobuf = null;
+
+    public function withProtobuf(Decoder $decoder): self
     {
-        $this->encoder = $encoder ?? ProtobufEncoder::default();
+        $builder = clone $this;
+        $builder->protobuf = $decoder;
+
+        return $builder;
     }
 
     public function withEncoding(Encoder $encoder): self
@@ -135,9 +144,9 @@ final class Builder
         return $builder;
     }
 
-    public static function buildDefault(Encoder $encoder): Client
+    public static function buildDefault(): Client
     {
-        return new self($encoder)->build();
+        return new self()->build();
     }
 
     public function build(): Client
@@ -158,8 +167,9 @@ final class Builder
                 ->skipAutomaticCompression()
                 ->skipDefaultAcceptHeader()
                 ->build(),
-            encoder: $this->encoder,
+            encoder: $this->encoder ?? ProtobufEncoder::default(),
             compressor: $this->compressor ?? IdentityCompressor::Compressor,
+            protobuf: $this->protobuf ?? Decoder\Builder::buildDefault(),
             interceptors: $this->interceptors,
         );
     }

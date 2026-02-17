@@ -1,7 +1,8 @@
 services:
   php:
-    # noinspection ComposeUnknownValues
-    image: ghcr.io/phpyh/php:${PHP_IMAGE_VERSION:?Make sure `PHP_IMAGE_VERSION` is declared in `.env`}
+    build:
+      context: docker/php
+      dockerfile: Dockerfile
     user: ${CONTAINER_USER:-}
     environment:
       INSIDE_DEVCONTAINER: true

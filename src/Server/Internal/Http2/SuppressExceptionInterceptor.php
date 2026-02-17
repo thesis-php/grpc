@@ -6,6 +6,7 @@ namespace Thesis\Grpc\Server\Internal\Http2;
 
 use Amp\Cancellation;
 use Amp\CancelledException;
+use Google\Rpc\Code;
 use Thesis\Grpc\Metadata;
 use Thesis\Grpc\Server\Handle;
 use Thesis\Grpc\Server\Interceptor;
@@ -29,11 +30,11 @@ final readonly class SuppressExceptionInterceptor implements Interceptor
         } catch (CancelledException) {
             $stream
                 ->trailers
-                ->join(new Metadata()->withKey(Metadata\StatusCode::DEADLINE_EXCEEDED));
+                ->join(new Metadata()->withKey(new Metadata\Status(Code::DEADLINE_EXCEEDED)));
         } catch (\Throwable) {
             $stream
                 ->trailers
-                ->join(new Metadata()->withKey(Metadata\StatusCode::INTERNAL));
+                ->join(new Metadata()->withKey(new Metadata\Status(Code::INTERNAL)));
         } finally {
             $stream->close();
         }

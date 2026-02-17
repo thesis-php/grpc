@@ -9,6 +9,7 @@ use Amp\Http\Server\Request;
 use Amp\Http\Server\RequestHandler;
 use Amp\Http\Server\Response;
 use Amp\NullCancellation;
+use Google\Rpc\Code;
 use Revolt\EventLoop;
 use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Encoding\Encoder;
@@ -65,10 +66,9 @@ final readonly class ServerRequestHandler implements RequestHandler
             );
 
             $rpc = $this->router->route($request);
-        } catch (UnimplementedException $e) {
+        } catch (UnimplementedException) {
             $md = new Metadata()
-                ->withKey(Metadata\StatusCode::UNIMPLEMENTED)
-                ->withKey(new Metadata\StatusMessage($e->getMessage()));
+                ->withKey(new Metadata\Status(Code::UNIMPLEMENTED));
 
             if (($contentType = $md->value('content-type')) !== null) {
                 $md = $md->withKey(new Metadata\ContentType($contentType));

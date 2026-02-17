@@ -6,7 +6,6 @@ namespace Thesis\Grpc\Protobuf;
 
 use Thesis\Grpc\Encoding;
 use Thesis\Protobuf;
-use Thesis\Protobuf\Reflection;
 
 /**
  * @api
@@ -14,15 +13,15 @@ use Thesis\Protobuf\Reflection;
 final readonly class ProtobufEncoder implements Encoding\Encoder
 {
     public function __construct(
-        private Protobuf\Serializer $serializer,
-        private Reflection\Reflector $reflector,
+        private Protobuf\Encoder $encoder,
+        private Protobuf\Decoder $decoder,
     ) {}
 
     public static function default(): self
     {
         return new self(
-            new Protobuf\Serializer(),
-            Reflection\Reflector::build(),
+            Protobuf\Encoder\Builder::buildDefault(),
+            Protobuf\Decoder\Builder::buildDefault(),
         );
     }
 
@@ -35,24 +34,20 @@ final readonly class ProtobufEncoder implements Encoding\Encoder
     #[\Override]
     public function encode(object $request): string
     {
-        return $this->serializer->serialize(
-            $this->reflector->message($request),
-        );
+        try {
+            return $this->encoder->encode($request);
+        } catch (Protobuf\Encoder\EncodingError $e) {
+            throw new Encoding\EncodingFailed($e->getMessage(), $e->getCode(), $e);
+        }
     }
 
     #[\Override]
     public function decode(string $buffer, string $classType): object
     {
         try {
-            return $this->reflector->map(
-                $this->serializer->deserialize(
-                    $this->reflector->type($classType),
-                    $buffer,
-                ),
-                $classType,
-            );
-        } catch (\Throwable $e) {
-            throw new Encoding\DecodingFailed($e->getMessage(), (int) $e->getCode(), $e);
+            return $this->decoder->decode($buffer, $classType);
+        } catch (Protobuf\Decoder\DecodingError $e) {
+            throw new Encoding\DecodingFailed($e->getMessage(), $e->getCode(), $e);
         }
     }
 }
