@@ -10,7 +10,6 @@ use PHPyh\CodingStandard\PhpCsFixerCodingStandard;
 $config = new Config()
     ->setFinder(
         Finder::create()
-            ->in(__DIR__ . '/examples')
             ->in(__DIR__ . '/src')
             ->in(__DIR__ . '/tests')
             ->append([
@@ -22,6 +21,7 @@ $config = new Config()
 
 new PhpCsFixerCodingStandard()->applyTo($config, [
     'native_constant_invocation' => false,
+    'final_public_method_for_abstract_class' => false,
 ]);
 
 return $config;

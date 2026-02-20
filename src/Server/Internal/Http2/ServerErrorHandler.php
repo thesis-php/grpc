@@ -9,7 +9,7 @@ use Amp\Http\Server\Request;
 use Amp\Http\Server\Response;
 
 /**
- * @api
+ * @internal
  */
 final readonly class ServerErrorHandler implements ErrorHandler
 {

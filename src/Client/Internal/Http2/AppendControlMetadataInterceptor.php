@@ -9,7 +9,6 @@ use Thesis\Grpc\Client\Interceptor;
 use Thesis\Grpc\Client\Invoke;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Metadata;
-use Thesis\Package;
 
 /**
  * @internal
@@ -33,9 +32,9 @@ final readonly class AppendControlMetadataInterceptor implements Interceptor
         callable $next,
     ): ClientStream {
         $md = $md
-            ->with('Content-Type', "application/grpc+{$this->encoding}")
-            ->with('User-Agent', 'grpc-php-thesis/' . Package\version('thesis/grpc'))
-            ->with('grpc-encoding', $this->compression)
+            ->withKey(new Metadata\ContentType($this->encoding))
+            ->withKey(Metadata\UserAgent::Key)
+            ->withKey(new Metadata\ContentEncoding($this->compression))
             ->with('TE', 'trailers');
 
         return $next($invoke, $md, $cancellation);

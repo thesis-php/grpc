@@ -8,8 +8,8 @@ use Thesis\Grpc\Exception\ServerStreamIsClosed;
 
 /**
  * @api
- * @template-covariant In
- * @template Out
+ * @template-covariant In of object
+ * @template Out of object
  * @template-extends \IteratorAggregate<array-key, In>
  */
 interface ServerStream extends \IteratorAggregate
@@ -28,13 +28,13 @@ interface ServerStream extends \IteratorAggregate
      * @param Out $message
      * @throws ServerStreamIsClosed
      */
-    public function send(mixed $message): void;
+    public function send(object $message): void;
 
     /**
      * @return In
      * @throws ServerStreamIsClosed
      */
-    public function receive(): mixed;
+    public function receive(): object;
 
     public function close(): void;
 }

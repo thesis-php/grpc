@@ -29,6 +29,7 @@ use Thesis\Grpc\Server;
 use Thesis\Grpc\Server\Internal\Http2\ServerErrorHandler;
 use Thesis\Grpc\Server\Internal\Http2\ServerRequestHandler;
 use Thesis\Grpc\Server\Internal\Transport;
+use Thesis\Protobuf;
 
 /**
  * @api
@@ -94,10 +95,23 @@ final class Builder
     /** @var positive-int */
     private int $bodySizeLimit = self::DEFAULT_BODY_SIZE_LIMIT;
 
+    /**
+     * Required for encoding the `grpc-status-details-bin` header, `status`, and `details`.
+     */
+    private ?Protobuf\Encoder $protobuf = null;
+
     public function __construct(?Encoder $encoder = null)
     {
         $encoder ??= ProtobufEncoder::default();
         $this->encoders[$encoder->name()] = $encoder;
+    }
+
+    public function withProtobuf(Protobuf\Encoder $encoder): self
+    {
+        $builder = clone $this;
+        $builder->protobuf = $encoder;
+
+        return $builder;
     }
 
     /**
@@ -364,6 +378,7 @@ final class Builder
             requestHandler: new ServerRequestHandler(
                 encoderFactory: new MessageEncoderFactory(array_values($this->encoders)),
                 compressorFactory: new MessageCompressorFactory($compressors),
+                protobuf: $this->protobuf ?? Protobuf\Encoder\Builder::buildDefault(),
                 services: $this->services,
                 interceptors: $this->interceptors,
             ),

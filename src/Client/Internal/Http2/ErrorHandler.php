@@ -4,11 +4,10 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc\Client\Internal\Http2;
 
-use Google\Protobuf;
-use Google\Rpc\Code;
-use Google\Rpc\Status;
-use Thesis\Grpc\Client\CallError;
-use Thesis\Grpc\Metadata;
+use Google\Rpc;
+use Thesis\Grpc\ClientStream;
+use Thesis\Grpc\InvokeError;
+use Thesis\Grpc\Status;
 use Thesis\Protobuf\Decoder;
 
 /**
@@ -20,41 +19,22 @@ final readonly class ErrorHandler
         private Decoder $decoder,
     ) {}
 
-    public function handle(
-        Metadata $headers,
-        Metadata $trailers,
-    ): ?CallError {
-        $md = $headers->merge($trailers);
+    /**
+     * @param ClientStream<*, *> $stream
+     * @throws Decoder\DecodingError
+     */
+    public function obtain(ClientStream $stream): ?InvokeError
+    {
+        $context = Status\deserializeContext($stream->headers()->merge($stream->trailers()), $this->decoder);
 
-        $statusMetadata = $md->status();
-
-        $code = $statusMetadata->code;
-        $message = $statusMetadata->message;
-
-        if ($code === Code::OK) {
-            return null;
+        if ($context->code !== Rpc\Code::OK) {
+            return new InvokeError(
+                $context->code,
+                $context->message,
+                $context->details,
+            );
         }
 
-        $details = [];
-
-        if (($bin = $md->value('grpc-status-details-bin')) !== null) {
-            $decoded = base64_decode($bin, true);
-            if ($decoded !== false) {
-                $status = $this->decoder->decode($decoded, Status::class);
-
-                $code = Code::tryFrom($status->code) ?? Code::UNKNOWN;
-                $message = $status->message !== '' ? $status->message : null;
-                $details = array_map(
-                    fn(Protobuf\Any $detail) => Protobuf\decodeAny($detail, $this->decoder),
-                    $status->details,
-                );
-            }
-        }
-
-        return new CallError(
-            $code,
-            $message,
-            $details,
-        );
+        return null;
     }
 }

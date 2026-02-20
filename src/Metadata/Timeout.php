@@ -13,15 +13,16 @@ final readonly class Timeout implements
     MetadataKey,
     \Stringable
 {
-    private const string TYPE_HOUR = 'H';
-    private const string TYPE_MINUTE = 'M';
-    private const string TYPE_SECOND = 'S';
-    private const string TYPE_MILLISECOND = 'm';
-    private const string TYPE_MICROSECOND = 'u';
-    private const string TYPE_NANOSECOND  = 'n';
+    public const string HEADER = 'grpc-timeout';
+    public const string TYPE_HOUR = 'H';
+    public const string TYPE_MINUTE = 'M';
+    public const string TYPE_SECOND = 'S';
+    public const string TYPE_MILLISECOND = 'm';
+    public const string TYPE_MICROSECOND = 'u';
+    public const string TYPE_NANOSECOND  = 'n';
 
     /** @var non-empty-array<self::TYPE_*, 1> */
-    private const array UNITS = [
+    public const array UNITS = [
         self::TYPE_HOUR => 1,
         self::TYPE_MINUTE => 1,
         self::TYPE_SECOND => 1,
@@ -101,42 +102,6 @@ final readonly class Timeout implements
         return self::seconds(max($deadline->getTimestamp() - $time->getTimestamp(), 0));
     }
 
-    /**
-     * @param non-empty-string $timeout
-     */
-    public static function fromString(string $timeout): self
-    {
-        if (\strlen($timeout) < 2) {
-            throw new \InvalidArgumentException("Timeout spec '{$timeout}' is too short.");
-        }
-
-        if (\strlen($timeout) > 9) {
-            throw new \InvalidArgumentException("Timeout spec '{$timeout}' is too long.");
-        }
-
-        $unit = $timeout[\strlen($timeout) - 1];
-        if (!isset(self::UNITS[$unit])) {
-            throw new \InvalidArgumentException("Timeout unit '{$unit}' is not recognized.");
-        }
-
-        $value = substr($timeout, 0, \strlen($timeout) - 1);
-
-        if (!is_numeric($value)) {
-            throw new \InvalidArgumentException("Timeout value '{$value}' is not a valid number.");
-        }
-
-        $factory = match ($unit) {
-            self::TYPE_HOUR => self::hours(...),
-            self::TYPE_MINUTE => self::minutes(...),
-            self::TYPE_SECOND => self::seconds(...),
-            self::TYPE_MILLISECOND => self::milliseconds(...),
-            self::TYPE_MICROSECOND => self::microseconds(...),
-            self::TYPE_NANOSECOND => self::nanoseconds(...),
-        };
-
-        return $factory(max((int) $value, 0));
-    }
-
     public function toSeconds(): float
     {
         return match ($this->unit) {
@@ -152,7 +117,7 @@ final readonly class Timeout implements
     #[\Override]
     public function append(Metadata $md): Metadata
     {
-        return $md->with('grpc-timeout', (string) $this);
+        return $md->replace(self::HEADER, (string) $this);
     }
 
     #[\Override]
@@ -160,4 +125,42 @@ final readonly class Timeout implements
     {
         return \sprintf('%d%s', $this->value, $this->unit);
     }
+}
+
+/**
+ * @internal
+ */
+function parseTimeout(Metadata $md): ?Timeout
+{
+    $timeout = $md->value(Timeout::HEADER) ?? '';
+
+    if (\strlen($timeout) < 2) {
+        return null;
+    }
+
+    if (\strlen($timeout) > 9) {
+        return null;
+    }
+
+    $unit = $timeout[\strlen($timeout) - 1];
+    if (!isset(Timeout::UNITS[$unit])) {
+        return null;
+    }
+
+    $value = substr($timeout, 0, \strlen($timeout) - 1);
+
+    if (!is_numeric($value)) {
+        return null;
+    }
+
+    $factory = match ($unit) {
+        Timeout::TYPE_HOUR => Timeout::hours(...),
+        Timeout::TYPE_MINUTE => Timeout::minutes(...),
+        Timeout::TYPE_SECOND => Timeout::seconds(...),
+        Timeout::TYPE_MILLISECOND => Timeout::milliseconds(...),
+        Timeout::TYPE_MICROSECOND => Timeout::microseconds(...),
+        Timeout::TYPE_NANOSECOND => Timeout::nanoseconds(...),
+    };
+
+    return $factory(max((int) $value, 0));
 }

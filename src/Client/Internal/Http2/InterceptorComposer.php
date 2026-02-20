@@ -23,8 +23,11 @@ final readonly class InterceptorComposer
     ) {}
 
     /**
-     * @param callable(Invoke, Metadata, Cancellation): ClientStream<*, *> $next
-     * @return ClientStream<*, *>
+     * @template In of object
+     * @template Out of object
+     * @param Invoke<In, Out> $invoke
+     * @param callable(Invoke<In, Out>, Metadata, Cancellation): ClientStream<In, Out> $next
+     * @return ClientStream<In, Out>
      */
     public function intercept(
         Invoke $invoke,
@@ -42,11 +45,12 @@ final readonly class InterceptorComposer
                 $invoke,
                 $md,
                 $cancellation,
-                new StackInterceptor($stack),
+                $stack(...), // @phpstan-ignore argument.type
             ),
             $next,
         );
 
+        /** @var ClientStream<In, Out> */
         return $handler($invoke, $md, $cancellation);
     }
 }

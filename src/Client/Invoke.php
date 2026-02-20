@@ -6,8 +6,8 @@ namespace Thesis\Grpc\Client;
 
 /**
  * @api
- * @template In of object = object
- * @template Out of object = object
+ * @template-covariant In of object = object
+ * @template-covariant Out of object = object
  */
 final readonly class Invoke
 {

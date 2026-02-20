@@ -7,7 +7,6 @@ namespace Thesis\Grpc;
 use Amp\Cancellation;
 use Amp\Http\Client\DelegateHttpClient;
 use Amp\NullCancellation;
-use Thesis\Grpc\Client\CallError;
 use Thesis\Grpc\Client\Internal\Http2;
 use Thesis\Grpc\Exception\ClientStreamIsClosed;
 use Thesis\Protobuf\Decoder;
@@ -55,7 +54,7 @@ final readonly class Client
      * @param In $request
      * @param Client\Invoke<In, Out> $invoke
      * @return Out
-     * @throws CallError
+     * @throws InvokeError
      * @throws ClientStreamIsClosed
      */
     public function invoke(

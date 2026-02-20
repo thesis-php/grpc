@@ -10,12 +10,13 @@ use Thesis\Grpc\ServerStream;
 
 /**
  * @api
- * @phpstan-import-type Next from Interceptor
  */
 final readonly class CallableInterceptor implements Interceptor
 {
     /**
-     * @param callable(Handle, Metadata, ServerStream<object, object>, Cancellation, Next): void $handler
+     * @template In of object
+     * @template Out of object
+     * @param callable(Handle, Metadata, ServerStream<In, Out>, Cancellation, callable(Handle<In>, Metadata, ServerStream<In, Out>, Cancellation): void): void $handler
      */
     public function __construct(
         private mixed $handler,

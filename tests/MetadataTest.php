@@ -40,27 +40,4 @@ final class MetadataTest extends TestCase
         $md = $md->replace('x', 'c');
         self::assertSame(['c'], $md['x']);
     }
-
-    public function testCompression(): void
-    {
-        $md = new Metadata();
-        self::assertNull($md->compression());
-        self::assertSame('gzip', $md->compression('gzip'));
-
-        $md = $md->with('grpc-encoding', 'deflate');
-        self::assertSame('deflate', $md->compression('gzip'));
-    }
-
-    public function testEncoding(): void
-    {
-        $md = new Metadata();
-        self::assertNull($md->encoding());
-        self::assertSame('proto', $md->encoding('proto'));
-
-        $md = $md->with('content-type', 'application/grpc');
-        self::assertSame('avro', $md->encoding('avro'));
-
-        $md = $md->replace('content-type', 'application/grpc+proto');
-        self::assertSame('proto', $md->encoding('avro'));
-    }
 }

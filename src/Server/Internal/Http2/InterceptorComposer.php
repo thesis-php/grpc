@@ -5,6 +5,8 @@ declare(strict_types=1);
 namespace Thesis\Grpc\Server\Internal\Http2;
 
 use Amp\Cancellation;
+use Amp\CancelledException;
+use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
 use Thesis\Grpc\Server\Handle;
 use Thesis\Grpc\Server\Interceptor;
@@ -23,8 +25,12 @@ final readonly class InterceptorComposer
     ) {}
 
     /**
-     * @param ServerStream<object, object> $stream
-     * @param callable(Handle, Metadata, ServerStream<object, object>, Cancellation): void $next
+     * @template In of object
+     * @template Out of object
+     * @param ServerStream<In, Out> $stream
+     * @param callable(Handle<In>, Metadata, ServerStream<In, Out>, Cancellation): void $next
+     * @throws InvokeError
+     * @throws CancelledException
      */
     public function intercept(
         Handle $handle,
@@ -45,7 +51,7 @@ final readonly class InterceptorComposer
                 $md,
                 $stream,
                 $cancellation,
-                new StackInterceptor($stack),
+                $stack(...), // @phpstan-ignore argument.type
             ),
             $next,
         );

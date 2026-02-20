@@ -12,7 +12,7 @@ use Thesis\Grpc\Server\Interceptor;
 use Thesis\Grpc\ServerStream;
 
 /**
- * @api
+ * @internal
  */
 final readonly class ParseGrpcTimeoutCancellationInterceptor implements Interceptor
 {
@@ -24,8 +24,9 @@ final readonly class ParseGrpcTimeoutCancellationInterceptor implements Intercep
         Cancellation $cancellation,
         callable $next,
     ): void {
-        if (($timeout = $md->value('grpc-timeout')) !== null) {
-            $cancellation = new TimeoutCancellation(Metadata\Timeout::fromString($timeout)->toSeconds());
+        $timeout = Metadata\parseTimeout($md);
+        if ($timeout !== null) {
+            $cancellation = new TimeoutCancellation($timeout->toSeconds());
         }
 
         $next($handle, $md, $stream, $cancellation);

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc;
 
-use Google\Rpc\Code;
-
 /**
  * @api
  * @template-implements \IteratorAggregate<non-empty-string, list<string>>
@@ -31,6 +29,14 @@ final class Metadata implements
 
             $this->kv[strtolower($key)] = $values;
         }
+    }
+
+    /**
+     * @param non-empty-string $key
+     */
+    public function has(string $key): bool
+    {
+        return isset($this[$key]);
     }
 
     /**
@@ -117,42 +123,6 @@ final class Metadata implements
         }
     }
 
-    public function status(): Metadata\Status
-    {
-        $code = (int) ($this->value('grpc-status') ?? Code::UNKNOWN->value);
-        $message = $this->value('grpc-message') ?? '';
-
-        return new Metadata\Status(Code::tryFrom($code) ?? Code::UNKNOWN, $message);
-    }
-
-    /**
-     * @param ?non-empty-string $default
-     * @return ($default is null ? (?non-empty-string) : non-empty-string)
-     */
-    public function compression(?string $default = null): ?string
-    {
-        return $this->value('grpc-encoding', $default);
-    }
-
-    /**
-     * @param ?non-empty-string $default
-     * @return ($default is null ? (?non-empty-string) : non-empty-string)
-     */
-    public function encoding(?string $default = null): ?string
-    {
-        $contentType = $this->value('content-type');
-        if ($contentType === null) {
-            return $default;
-        }
-
-        $encoding = substr($contentType, \strlen('application/grpc+'));
-        if ($encoding === '') {
-            return $default;
-        }
-
-        return $encoding;
-    }
-
     /**
      * @param non-empty-string $key
      * @param ?non-empty-string $default
@@ -160,16 +130,9 @@ final class Metadata implements
      */
     public function value(string $key, ?string $default = null): ?string
     {
-        $values = $this[$key];
-
-        if ($values === []) {
-            return $default;
-        }
-
-        $value = $values[0];
-
+        $value = $this[$key][0] ?? $default;
         if ($value === '') {
-            return $default;
+            $value = null;
         }
 
         return $value;

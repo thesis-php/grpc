@@ -5,10 +5,13 @@ declare(strict_types=1);
 namespace Thesis\Grpc\Metadata;
 
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\CoversFunction;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Thesis\Grpc\Metadata;
 
 #[CoversClass(Timeout::class)]
+#[CoversFunction('Thesis\Grpc\Metadata\parseTimeout')]
 final class TimeoutTest extends TestCase
 {
     /**
@@ -63,19 +66,16 @@ final class TimeoutTest extends TestCase
         ];
     }
 
-    /**
-     * @param non-empty-string $value
-     */
-    #[DataProvider('provideFromStringCases')]
-    public function testFromString(string $value, Timeout $timeout): void
+    #[DataProvider('provideParseTimeoutCases')]
+    public function testParseTimeout(string $value, ?Timeout $timeout = null): void
     {
-        self::assertEquals($timeout, Timeout::fromString($value));
+        self::assertEquals($timeout, parseTimeout(new Metadata()->with(Timeout::HEADER, $value)));
     }
 
     /**
-     * @return iterable<array-key, array{non-empty-string, Timeout}>
+     * @return iterable<array-key, array{string, ?Timeout}>
      */
-    public static function provideFromStringCases(): iterable
+    public static function provideParseTimeoutCases(): iterable
     {
         yield 'hours' => [
             '2H',
@@ -106,38 +106,31 @@ final class TimeoutTest extends TestCase
             '60000n',
             Timeout::nanoseconds(60_000),
         ];
-    }
 
-    public function testHeaderValueIsTooShort(): void
-    {
-        self::expectException(\InvalidArgumentException::class);
-        self::expectExceptionMessage("Timeout spec '1' is too short.");
+        yield 'empty' => [
+            '',
+            null,
+        ];
 
-        Timeout::fromString('1');
-    }
+        yield 'too short' => [
+            '1',
+            null,
+        ];
 
-    public function testHeaderValueIsTooLong(): void
-    {
-        self::expectException(\InvalidArgumentException::class);
-        self::expectExceptionMessage("Timeout spec '123456789S' is too long.");
+        yield 'too long' => [
+            '123456789S',
+            null,
+        ];
 
-        Timeout::fromString('123456789S');
-    }
+        yield 'unknown unit' => [
+            '1D',
+            null,
+        ];
 
-    public function testTimeoutUnitIsUnknown(): void
-    {
-        self::expectException(\InvalidArgumentException::class);
-        self::expectExceptionMessage("Timeout unit 'D' is not recognized.");
-
-        Timeout::fromString('1D');
-    }
-
-    public function testTimeoutValueIsNotANumber(): void
-    {
-        self::expectException(\InvalidArgumentException::class);
-        self::expectExceptionMessage("Timeout value 'i' is not a valid number.");
-
-        Timeout::fromString('iS');
+        yield 'value is not a number' => [
+            'iS',
+            null,
+        ];
     }
 
     public function testFromInterval(): void

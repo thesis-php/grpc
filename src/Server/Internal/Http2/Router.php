@@ -47,12 +47,8 @@ final readonly class Router
 
         $endpoint = Endpoint::parse($path);
 
-        $rpc = $this->services[$endpoint->service] ?? throw new InvalidRpcMethod(
-            "Unknown service {$endpoint->service}",
-        );
+        $rpc = $this->services[$endpoint->service] ?? throw new InvalidRpcMethod("Unknown service {$endpoint->service}");
 
-        return $rpc[$endpoint->method] ?? throw new InvalidRpcMethod(
-            "Unknown method {$endpoint->method} for service {$endpoint->service}",
-        );
+        return $rpc[$endpoint->method] ?? throw new InvalidRpcMethod("Unknown method {$endpoint->method} for service {$endpoint->service}");
     }
 }

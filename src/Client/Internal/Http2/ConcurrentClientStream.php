@@ -10,9 +10,9 @@ use Amp\Http\Client\Response;
 use Amp\NullCancellation;
 use Amp\Pipeline;
 use Google\Rpc\Code;
-use Thesis\Grpc\Client\CallError;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Exception\ClientStreamIsClosed;
+use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
 
 /**
@@ -41,7 +41,7 @@ final class ConcurrentClientStream implements ClientStream
     ) {}
 
     #[\Override]
-    public function send(mixed $message): void
+    public function send(object $message): void
     {
         try {
             $this->send->push($message);
@@ -51,13 +51,10 @@ final class ConcurrentClientStream implements ClientStream
     }
 
     #[\Override]
-    public function receive(): mixed
+    public function receive(): object
     {
         if (!$this->recv->continue()) {
-            throw $this->errors->handle(
-                $this->headers(),
-                $this->trailers(),
-            ) ?? new CallError(Code::UNKNOWN);
+            throw $this->errors->obtain($this) ?? new InvokeError(Code::UNKNOWN);
         }
 
         return $this->recv->getValue();
@@ -90,7 +87,8 @@ final class ConcurrentClientStream implements ClientStream
     {
         yield from $this->recv;
 
-        if (($error = $this->errors->handle($this->headers(), $this->trailers())) !== null) {
+        $error = $this->errors->obtain($this);
+        if ($error !== null) {
             throw $error;
         }
     }

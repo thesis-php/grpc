@@ -5,18 +5,23 @@ declare(strict_types=1);
 namespace Thesis\Grpc\Server;
 
 use Amp\Cancellation;
+use Amp\CancelledException;
+use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
 use Thesis\Grpc\ServerStream;
 
 /**
  * @api
- * @phpstan-type Next = callable(Handle, Metadata, ServerStream<object, object>, Cancellation): void
  */
 interface Interceptor
 {
     /**
-     * @param Next $next
-     * @param ServerStream<object, object> $stream
+     * @template In of object
+     * @template Out of object
+     * @param callable(Handle<In>, Metadata, ServerStream<In, Out>, Cancellation): void $next
+     * @param ServerStream<In, Out> $stream
+     * @throws InvokeError
+     * @throws CancelledException
      */
     public function intercept(
         Handle $handle,

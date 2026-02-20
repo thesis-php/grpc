@@ -10,13 +10,15 @@ use Thesis\Grpc\Metadata;
 
 /**
  * @api
- * @phpstan-type Handler = callable(Invoke, Metadata, Cancellation): ClientStream<*, *>
  */
 interface Interceptor
 {
     /**
-     * @param Handler $next
-     * @return ClientStream<*, *>
+     * @template In of object
+     * @template Out of object
+     * @param Invoke<In, Out> $invoke
+     * @param callable(Invoke<In, Out>, Metadata, Cancellation): ClientStream<In, Out> $next
+     * @return ClientStream<In, Out>
      */
     public function intercept(
         Invoke $invoke,

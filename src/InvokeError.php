@@ -2,15 +2,14 @@
 
 declare(strict_types=1);
 
-namespace Thesis\Grpc\Client;
+namespace Thesis\Grpc;
 
 use Google\Rpc\Code;
-use Thesis\Grpc\GrpcException;
 
 /**
  * @api
  */
-final class CallError extends GrpcException
+final class InvokeError extends GrpcException
 {
     /**
      * @param list<object> $details
@@ -21,9 +20,9 @@ final class CallError extends GrpcException
         public readonly array $details = [],
     ) {
         parent::__construct(\sprintf(
-            'A grpc error with status code "%s" and message "%s" received',
+            'A grpc error with status code "%s" and message "%s" occurred',
             $statusCode->name,
-            $statusMessage ?? $statusCode->name,
+            $statusMessage ?? '',
         ));
     }
 }

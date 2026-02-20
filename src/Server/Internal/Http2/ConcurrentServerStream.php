@@ -34,7 +34,7 @@ final class ConcurrentServerStream implements ServerStream
     ) {}
 
     #[\Override]
-    public function send(mixed $message): void
+    public function send(object $message): void
     {
         try {
             $this->send->push($message);
@@ -44,7 +44,7 @@ final class ConcurrentServerStream implements ServerStream
     }
 
     #[\Override]
-    public function receive(): mixed
+    public function receive(): object
     {
         if (!$this->recv->continue()) {
             throw new ServerStreamIsClosed();

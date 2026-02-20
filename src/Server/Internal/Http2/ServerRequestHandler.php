@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace Thesis\Grpc\Server\Internal\Http2;
 
 use Amp\Cancellation;
+use Amp\Http\HttpStatus;
 use Amp\Http\Server\Request;
 use Amp\Http\Server\RequestHandler;
 use Amp\Http\Server\Response;
 use Amp\NullCancellation;
-use Google\Rpc\Code;
+use Google\Rpc;
 use Revolt\EventLoop;
-use Thesis\Grpc\Compression\Compressor;
-use Thesis\Grpc\Encoding\Encoder;
 use Thesis\Grpc\Metadata;
 use Thesis\Grpc\Server\Handle;
 use Thesis\Grpc\Server\Interceptor;
@@ -21,6 +20,7 @@ use Thesis\Grpc\Server\MessageEncoderFactory;
 use Thesis\Grpc\Server\Service;
 use Thesis\Grpc\ServerStream;
 use Thesis\Grpc\UnimplementedException;
+use Thesis\Protobuf;
 
 /**
  * @internal
@@ -28,6 +28,10 @@ use Thesis\Grpc\UnimplementedException;
 final readonly class ServerRequestHandler implements RequestHandler
 {
     private Router $router;
+
+    private StreamErrorHandler $errorHandler;
+
+    private StreamHandler $streamHandler;
 
     private InterceptorComposer $interceptor;
 
@@ -38,12 +42,14 @@ final readonly class ServerRequestHandler implements RequestHandler
     public function __construct(
         private MessageEncoderFactory $encoderFactory,
         private MessageCompressorFactory $compressorFactory,
+        Protobuf\Encoder $protobuf,
         array $services,
         array $interceptors,
     ) {
         $this->router = new Router($services);
+        $this->errorHandler = new StreamErrorHandler($protobuf);
+        $this->streamHandler = new StreamHandler($this->errorHandler);
         $this->interceptor = new InterceptorComposer([
-            new SuppressExceptionInterceptor(),
             new ParseGrpcTimeoutCancellationInterceptor(),
             ...$interceptors,
         ]);
@@ -54,29 +60,31 @@ final readonly class ServerRequestHandler implements RequestHandler
     {
         $md = new Metadata($request->getHeaders());
 
-        $response = new Response();
+        $headers = new Metadata();
+
+        $contentType = Metadata\parseContentType($md);
+
+        // We intentionally do not overwrite the original "Content-Type" to trigger a parsing error if the "Content-Type" was invalid.
+        // At the same time, we must return a valid "Content-Type" to the client even in case of an error,
+        // so we default to "application/grpc" without specifying an encoding, since we don't know it.
+        $headers = $headers->withKey($contentType ?? new Metadata\ContentType());
+
+        if ($contentType === null) {
+            return new Response(status: HttpStatus::UNSUPPORTED_MEDIA_TYPE, headers: $headers->kv);
+        }
+
+        // For "grpc-encoding" header we follow the same approach as for "Content-Type": we should not specify "IDENTITY" by default for the response to avoid sending an unnecessary header.
+        // However, when obtaining a compressor, we can specify IDENTITY as the default, and the factory will provide it.
+        $contentEncoding = Metadata\parseContentEncoding($md);
 
         try {
-            $compressor = $this->compressorFactory->compressor(
-                $md->compression(Compressor::DEFAULT_COMPRESSION),
-            );
-
-            $encoder = $this->encoderFactory->encoder(
-                $md->encoding(Encoder::DEFAULT_ENCODING),
-            );
-
+            $compressor = $this->compressorFactory->compressor($contentEncoding->encoding ?? Metadata\ContentEncoding::GRPC_DEFAULT_COMPRESSION);
+            $encoder = $this->encoderFactory->encoder($contentType->encoding ?? Metadata\ContentType::GRPC_DEFAULT_ENCODING);
             $rpc = $this->router->route($request);
-        } catch (UnimplementedException) {
-            $md = new Metadata()
-                ->withKey(new Metadata\Status(Code::UNIMPLEMENTED));
+        } catch (UnimplementedException $e) {
+            $headers = $headers->withKey(new Metadata\Status(Rpc\Code::UNIMPLEMENTED, $e->getMessage()));
 
-            if (($contentType = $md->value('content-type')) !== null) {
-                $md = $md->withKey(new Metadata\ContentType($contentType));
-            }
-
-            $response->setHeaders($md->kv);
-
-            return $response;
+            return new Response(status: HttpStatus::OK, headers: $headers->kv);
         }
 
         /** @var array<non-empty-string, StreamFactory> $streams */
@@ -85,6 +93,8 @@ final readonly class ServerRequestHandler implements RequestHandler
             $encoder,
             $compressor,
         );
+
+        $response = new Response();
 
         /** @var ServerStream<object, object> $stream */
         $stream = $factory->create(
@@ -95,23 +105,43 @@ final readonly class ServerRequestHandler implements RequestHandler
 
         $cancellation = new NullCancellation();
 
-        EventLoop::queue(
-            $this->interceptor->intercept(...),
-            $rpc->handle,
-            $md,
-            $stream,
-            $cancellation,
-            static fn(
-                Handle $handle,
-                Metadata $md,
-                ServerStream $stream,
-                Cancellation $cancellation,
-            ) => $rpc->handler->handle(
-                $stream,
+        try {
+            // We must not wrap the entire interceptor chain in {@see EventLoop::queue}, as they may still return errors before processing begins,
+            // which should be returned in headers rather than trailers (trailers only response).
+            $this->interceptor->intercept(
+                $rpc->handle,
                 $md,
+                $stream,
                 $cancellation,
-            ),
-        );
+                fn(
+                    Handle $handle,
+                    Metadata $md,
+                    ServerStream $stream,
+                    Cancellation $cancellation,
+                ) => EventLoop::queue(
+                    $this->streamHandler->handle(...),
+                    $rpc->handler,
+                    $stream,
+                    $md,
+                    $cancellation,
+                ),
+            );
+        } catch (\Throwable $e) {
+            $headers = $headers->merge($this->errorHandler->handle($e));
+        }
+
+        // If the "grpc-status" is set, the request was aborted by one of the interceptors; close the stream.
+        if ($headers->has(Metadata\Status::STATUS_HEADER)) {
+            $stream->close();
+        }
+
+        // The "grpc-encoding" header should only be sent when a protobuf message is expected to be returned.
+        // Otherwise, compression will not be applied anyway.
+        if ($contentEncoding !== null) {
+            $headers = $headers->withKey($contentEncoding);
+        }
+
+        $response->setHeaders($headers->kv);
 
         return $response;
     }

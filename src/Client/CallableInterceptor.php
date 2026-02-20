@@ -10,12 +10,13 @@ use Thesis\Grpc\Metadata;
 
 /**
  * @api
- * @phpstan-import-type Handler from Interceptor
  */
 final readonly class CallableInterceptor implements Interceptor
 {
     /**
-     * @param callable(Invoke<*, *>, Metadata, Cancellation, Handler): ClientStream<*, *> $handler
+     * @template In of object
+     * @template Out of object
+     * @param callable(Invoke<In, Out>, Metadata, Cancellation, callable(Invoke<In, Out>, Metadata, Cancellation): ClientStream<In, Out>): ClientStream<In, Out> $handler
      */
     public function __construct(
         private mixed $handler,

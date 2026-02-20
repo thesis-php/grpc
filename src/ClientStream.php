@@ -6,13 +6,12 @@ namespace Thesis\Grpc;
 
 use Amp\Cancellation;
 use Amp\NullCancellation;
-use Thesis\Grpc\Client\CallError;
 use Thesis\Grpc\Exception\ClientStreamIsClosed;
 
 /**
  * @api
- * @template In
- * @template-covariant Out
+ * @template In of object
+ * @template-covariant Out of object
  * @template-extends \IteratorAggregate<array-key, Out>
  */
 interface ClientStream extends \IteratorAggregate
@@ -21,13 +20,13 @@ interface ClientStream extends \IteratorAggregate
      * @param In $message
      * @throws ClientStreamIsClosed
      */
-    public function send(mixed $message): void;
+    public function send(object $message): void;
 
     /**
      * @return Out
-     * @throws CallError
+     * @throws InvokeError
      */
-    public function receive(): mixed;
+    public function receive(): object;
 
     /**
      * This method should be called after the ({@see send}) method has been called for the first time.
