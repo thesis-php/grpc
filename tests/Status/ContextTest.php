@@ -4,14 +4,14 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc\Status;
 
+use Google\Rpc;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\CoversFunction;
 use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 use Thesis\Grpc\Metadata;
-use Google\Rpc;
-use Thesis\Protobuf\Encoder;
 use Thesis\Protobuf\Decoder;
+use Thesis\Protobuf\Encoder;
 
 #[CoversClass(Context::class)]
 #[CoversFunction('Thesis\Grpc\Status\serializeContext')]
