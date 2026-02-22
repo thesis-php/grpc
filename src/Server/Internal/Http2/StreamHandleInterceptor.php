@@ -6,13 +6,13 @@ namespace Thesis\Grpc\Server\Internal\Http2;
 
 use Amp\Cancellation;
 use Amp\CancelledException;
+use Google\Rpc;
 use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
 use Thesis\Grpc\Server\Handle;
 use Thesis\Grpc\Server\Interceptor;
 use Thesis\Grpc\ServerStream;
 use Thesis\Grpc\Status;
-use Google\Rpc;
 use Thesis\Protobuf;
 
 /**
@@ -38,8 +38,7 @@ final readonly class StreamHandleInterceptor implements Interceptor
     ): void {
         $trailers = new Metadata();
 
-        // Since the stream is closed by the rpc handler, we add "grpc-status" to trailers beforehand to avoid shifting
-        // this responsibility onto the handlers.
+        // Since the stream is closed by the rpc handler, we add "grpc-status" to trailers beforehand to avoid shifting this responsibility onto the handlers.
         // In case of an error, this trailer will be overridden below.
         $stream->trailers->join($this->ok);
 

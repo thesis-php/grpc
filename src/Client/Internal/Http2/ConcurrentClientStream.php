@@ -32,12 +32,14 @@ final class ConcurrentClientStream implements ClientStream
      * @param Future<Response> $responseFuture
      * @param Pipeline\Queue<In> $send
      * @param \Closure(Response): Pipeline\ConcurrentIterator<Out> $decode
+     * @param Future<null> $complete
      */
     public function __construct(
         private readonly Future $responseFuture,
         private readonly Pipeline\Queue $send,
         private readonly \Closure $decode,
         private readonly ErrorHandler $errors,
+        private readonly Future $complete,
     ) {}
 
     #[\Override]
@@ -80,6 +82,7 @@ final class ConcurrentClientStream implements ClientStream
         }
 
         $this->send->complete();
+        $this->complete->await();
     }
 
     #[\Override]

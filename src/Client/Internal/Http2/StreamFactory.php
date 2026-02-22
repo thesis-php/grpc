@@ -6,6 +6,7 @@ namespace Thesis\Grpc\Client\Internal\Http2;
 
 use Amp\ByteStream\ReadableIterableStream;
 use Amp\Cancellation;
+use Amp\DeferredFuture;
 use Amp\Future;
 use Amp\Http\Client\DelegateHttpClient;
 use Amp\Http\Client\Request;
@@ -55,6 +56,9 @@ final readonly class StreamFactory
         /** @var Pipeline\Queue<In> $send */
         $send = new Pipeline\Queue(1);
 
+        /** @var DeferredFuture<null> $deferred */
+        $deferred = new DeferredFuture();
+
         $request = new Request(
             uri: $this->uri->create($invoke->method),
             method: 'POST',
@@ -65,6 +69,12 @@ final readonly class StreamFactory
         $request->setProtocolVersions(['2']);
         $request->setHeaders($md->kv);
 
+        // If the program terminates after making a request, the HTTP client may not have enough time to finish sending the request body and trailers,
+        // causing an error on the server side — after a certain timeout, the server will detect that the client unexpectedly closed the connection.
+        // Therefore, after calling {@see ConcurrentClientStream::close()}, we must wait for a future that completes successfully
+        // only after the entire body and trailers have been successfully transmitted to the server.
+        $request->addEventListener(new RequestEventListener()->onRequestEnd($deferred->complete(...))); // @phpstan-ignore argument.type
+
         /** @var Future<Response> $response */
         $response = async($this->http->request(...), $request, $cancellation);
 
@@ -73,6 +83,7 @@ final readonly class StreamFactory
             send: $send,
             decode: fn(Response $response) => $this->codec->decode($response->getBody(), $invoke->type),
             errors: $this->errors,
+            complete: $deferred->getFuture(),
         );
     }
 }
