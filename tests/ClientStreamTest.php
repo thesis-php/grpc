@@ -25,8 +25,6 @@ final class ClientStreamTest extends TestCase
 
     protected function setUp(): void
     {
-        parent::setUp();
-
         $this->server = new Server\Builder()
             ->withServices(new FileServiceServerRegistry(new ClientStreamServer()))
             ->withInterceptors(new CallableInterceptor(static function (
@@ -50,8 +48,6 @@ final class ClientStreamTest extends TestCase
 
     protected function tearDown(): void
     {
-        parent::tearDown();
-
         $this->server->stop();
     }
 

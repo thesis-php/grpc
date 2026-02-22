@@ -28,8 +28,6 @@ final class UnaryTest extends TestCase
 
     protected function setUp(): void
     {
-        parent::setUp();
-
         $this->server = new Server\Builder()
             ->withServices(new EchoServiceServerRegistry(new UnaryEchoServer()))
             ->withInterceptors(new AuthorizationServerInterceptor('secret'))
@@ -40,8 +38,6 @@ final class UnaryTest extends TestCase
 
     protected function tearDown(): void
     {
-        parent::tearDown();
-
         $this->server->stop();
     }
 

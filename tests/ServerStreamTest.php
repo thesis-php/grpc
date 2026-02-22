@@ -29,8 +29,6 @@ final class ServerStreamTest extends TestCase
 
     protected function setUp(): void
     {
-        parent::setUp();
-
         $this->server = new Server\Builder()
             ->withServices(new TopicServiceServerRegistry(new TopicServer()))
             ->build();
@@ -40,8 +38,6 @@ final class ServerStreamTest extends TestCase
 
     protected function tearDown(): void
     {
-        parent::tearDown();
-
         $this->server->stop();
     }
 
