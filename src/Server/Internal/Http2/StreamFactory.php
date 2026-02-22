@@ -13,6 +13,7 @@ use Amp\Pipeline;
 use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Encoding\Encoder;
 use Thesis\Grpc\Internal\Http2\StreamCodec;
+use Thesis\Grpc\Metadata;
 use Thesis\Grpc\Server\Handle;
 use Thesis\Grpc\ServerStream;
 
@@ -54,6 +55,7 @@ final readonly class StreamFactory
         ));
 
         return new ConcurrentServerStream(
+            new Metadata($request->getHeaders()),
             $this->codec->decode($request->getBody(), $handle->type),
             $send,
             $trailers,

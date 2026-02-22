@@ -20,14 +20,13 @@ final class ConcurrentServerStream implements ServerStream
 {
     public private(set) Metadata $trailers { get => $this->trailers ??= new Metadata(); }
 
-    public private(set) Metadata $headers { get => $this->headers ??= new Metadata(); }
-
     /**
      * @param Pipeline\ConcurrentIterator<In> $recv
      * @param Pipeline\Queue<Out> $send
      * @param DeferredFuture<array<non-empty-string, list<string>>> $trailersFuture
      */
     public function __construct(
+        public readonly Metadata $headers,
         private readonly Pipeline\ConcurrentIterator $recv,
         private readonly Pipeline\Queue $send,
         private readonly DeferredFuture $trailersFuture,

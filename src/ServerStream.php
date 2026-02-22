@@ -15,7 +15,7 @@ use Thesis\Grpc\Exception\ServerStreamIsClosed;
 interface ServerStream extends \IteratorAggregate
 {
     /**
-     * This property can be modified before the ({@see send}) method has been called for the first time.
+     * Incoming request metadata.
      */
     public Metadata $headers { get; }
 
