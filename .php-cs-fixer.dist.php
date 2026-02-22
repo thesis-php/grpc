@@ -12,6 +12,9 @@ $config = new Config()
         Finder::create()
             ->in(__DIR__ . '/src')
             ->in(__DIR__ . '/tests')
+            ->exclude([
+                'genproto',
+            ])
             ->append([
                 __FILE__,
             ]),

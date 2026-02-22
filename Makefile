@@ -133,6 +133,12 @@ fix: fixer rector composer-normalize ## Run all fixing recipes
 check: fixer-check rector-check composer-validate composer-normalize-check deps-analyze phpstan test  ## Run all project checks
 .PHONY: check
 
+compile-test-stub:
+	protoc \
+	    --plugin=protoc-gen-php-plugin=/usr/local/bin/protoc-gen-php \
+	    tests/protos/*.proto \
+	    --php-plugin_out=tests/genproto
+
 # -----------------------
 
 help:
