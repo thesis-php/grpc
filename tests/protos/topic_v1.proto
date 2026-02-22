@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+import "google/protobuf/timestamp.proto";
+
+package topic.api.v1;
+
+message SubscribeRequest {
+    string topic = 1;
+}
+
+message Event {
+    string type = 1;
+    string payload = 2;
+    google.protobuf.Timestamp ts = 3;
+}
+
+service TopicService {
+    rpc Subscribe(SubscribeRequest) returns (stream Event);
+}
