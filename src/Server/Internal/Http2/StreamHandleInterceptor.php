@@ -40,7 +40,7 @@ final readonly class StreamHandleInterceptor implements Interceptor
 
         // Since the stream is closed by the rpc handler, we add "grpc-status" to trailers beforehand to avoid shifting this responsibility onto the handlers.
         // In case of an error, this trailer will be overridden below.
-        $stream->trailers->join($this->ok);
+        $stream->trailers->erase($this->ok);
 
         try {
             $next($stream, $info, $md, $cancellation);
@@ -54,7 +54,7 @@ final readonly class StreamHandleInterceptor implements Interceptor
         } catch (\Throwable) {
             $trailers = $trailers->withKey(new Metadata\Status(Rpc\Code::INTERNAL));
         } finally {
-            $stream->trailers->join($trailers);
+            $stream->trailers->erase($trailers);
             $stream->close();
         }
     }
