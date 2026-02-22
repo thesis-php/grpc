@@ -123,6 +123,13 @@ final class Metadata implements
         }
     }
 
+    public function erase(self $other): void
+    {
+        foreach ($other->kv as $key => $values) {
+            $this->kv[$key] = $values;
+        }
+    }
+
     /**
      * @param non-empty-string $key
      * @param ?non-empty-string $default
