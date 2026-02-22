@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package file.api.v1;
+
+message Chunk {
+    bytes content = 1;
+}
+
+message FileInfo {
+    int32 size = 1;
+}
+
+service FileService {
+    rpc Upload (stream Chunk) returns (FileInfo);
+}
