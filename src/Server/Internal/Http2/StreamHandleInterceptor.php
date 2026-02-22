@@ -9,8 +9,8 @@ use Amp\CancelledException;
 use Google\Rpc;
 use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
-use Thesis\Grpc\Server\Handle;
 use Thesis\Grpc\Server\Interceptor;
+use Thesis\Grpc\Server\StreamInfo;
 use Thesis\Grpc\ServerStream;
 use Thesis\Grpc\Status;
 use Thesis\Protobuf;
@@ -30,9 +30,9 @@ final readonly class StreamHandleInterceptor implements Interceptor
 
     #[\Override]
     public function intercept(
-        Handle $handle,
-        Metadata $md,
         ServerStream $stream,
+        StreamInfo $info,
+        Metadata $md,
         Cancellation $cancellation,
         callable $next,
     ): void {
@@ -43,7 +43,7 @@ final readonly class StreamHandleInterceptor implements Interceptor
         $stream->trailers->join($this->ok);
 
         try {
-            $next($handle, $md, $stream, $cancellation);
+            $next($stream, $info, $md, $cancellation);
         } catch (InvokeError $e) {
             $trailers = $trailers->withKey(Status\serializeContext(
                 new Status\Context($e->statusCode, $e->statusMessage, $e->details),

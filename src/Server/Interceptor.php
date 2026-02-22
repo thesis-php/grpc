@@ -18,15 +18,15 @@ interface Interceptor
     /**
      * @template In of object
      * @template Out of object
-     * @param callable(Handle<In>, Metadata, ServerStream<In, Out>, Cancellation): void $next
      * @param ServerStream<In, Out> $stream
+     * @param callable(ServerStream<In, Out>, StreamInfo, Metadata, Cancellation): void $next
      * @throws InvokeError
      * @throws CancelledException
      */
     public function intercept(
-        Handle $handle,
-        Metadata $md,
         ServerStream $stream,
+        StreamInfo $info,
+        Metadata $md,
         Cancellation $cancellation,
         callable $next,
     ): void;

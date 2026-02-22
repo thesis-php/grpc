@@ -16,7 +16,7 @@ final readonly class CallableInterceptor implements Interceptor
     /**
      * @template In of object
      * @template Out of object
-     * @param callable(Handle, Metadata, ServerStream<In, Out>, Cancellation, callable(Handle<In>, Metadata, ServerStream<In, Out>, Cancellation): void): void $handler
+     * @param callable(ServerStream<In, Out>, StreamInfo, Metadata, Cancellation, callable(ServerStream<In, Out>, StreamInfo, Metadata, Cancellation): void): void $handler
      */
     public function __construct(
         private mixed $handler,
@@ -24,16 +24,16 @@ final readonly class CallableInterceptor implements Interceptor
 
     #[\Override]
     public function intercept(
-        Handle $handle,
-        Metadata $md,
         ServerStream $stream,
+        StreamInfo $info,
+        Metadata $md,
         Cancellation $cancellation,
         callable $next,
     ): void {
         ($this->handler)(
-            $handle,
-            $md,
             $stream,
+            $info,
+            $md,
             $cancellation,
             $next,
         );

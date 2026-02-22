@@ -15,11 +15,11 @@ use Amp\NullCancellation;
 use Google\Rpc;
 use Revolt\EventLoop;
 use Thesis\Grpc\Metadata;
-use Thesis\Grpc\Server\Handle;
 use Thesis\Grpc\Server\Interceptor;
 use Thesis\Grpc\Server\MessageCompressorFactory;
 use Thesis\Grpc\Server\MessageEncoderFactory;
 use Thesis\Grpc\Server\Service;
+use Thesis\Grpc\Server\StreamInfo;
 use Thesis\Grpc\ServerStream;
 use Thesis\Grpc\UnimplementedException;
 use Thesis\Protobuf;
@@ -115,14 +115,17 @@ final readonly class ServerRequestHandler implements RequestHandler
 
         EventLoop::queue(
             $this->interceptor->intercept(...),
-            $rpc->handle,
-            $md,
             $stream,
+            new StreamInfo(
+                $rpc->handle->method,
+                $rpc->type,
+            ),
+            $md,
             $cancellation,
             static fn(
-                Handle $handle,
-                Metadata $md,
                 ServerStream $stream,
+                StreamInfo $info,
+                Metadata $md,
                 Cancellation $cancellation,
             ) => $rpc->handler->handle(
                 $stream,

@@ -18,5 +18,6 @@ final readonly class Rpc
     public function __construct(
         public Handle $handle,
         public Handler $handler,
+        public RpcType $type,
     ) {}
 }

@@ -7,8 +7,8 @@ namespace Thesis\Grpc\Server\Internal\Http2;
 use Amp\Cancellation;
 use Amp\TimeoutCancellation;
 use Thesis\Grpc\Metadata;
-use Thesis\Grpc\Server\Handle;
 use Thesis\Grpc\Server\Interceptor;
+use Thesis\Grpc\Server\StreamInfo;
 use Thesis\Grpc\ServerStream;
 
 /**
@@ -18,9 +18,9 @@ final readonly class ParseGrpcTimeoutCancellationInterceptor implements Intercep
 {
     #[\Override]
     public function intercept(
-        Handle $handle,
-        Metadata $md,
         ServerStream $stream,
+        StreamInfo $info,
+        Metadata $md,
         Cancellation $cancellation,
         callable $next,
     ): void {
@@ -29,6 +29,6 @@ final readonly class ParseGrpcTimeoutCancellationInterceptor implements Intercep
             $cancellation = new TimeoutCancellation($timeout->toSeconds());
         }
 
-        $next($handle, $md, $stream, $cancellation);
+        $next($stream, $info, $md, $cancellation);
     }
 }
