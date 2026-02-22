@@ -1,0 +1,15 @@
+syntax = "proto3";
+
+package echos.api.v1;
+
+message EchoRequest {
+    string sentence = 1;
+}
+
+message EchoResponse {
+    string sentence = 1;
+}
+
+service EchoService {
+    rpc Echo(EchoRequest) returns (EchoResponse);
+}
