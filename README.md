@@ -432,3 +432,88 @@ $client = new AuthenticationServiceClient(
         ->build(),
 );
 ```
+
+### Client Streaming
+
+If you have prior gRPC experience in PHP, nothing so far will have surprised you. Let's move on to what truly sets gRPC apart — streams.
+
+We'll start with client streaming. In this pattern, the client sends a stream of messages to the server, and once the stream is complete, the server returns a single response and closes the connection. As an example, consider a proto schema where the client sends a series of words and asks the server to count the total number of bytes received:
+
+```protobuf
+syntax = "proto3";
+
+package counter.api.v1;
+
+message Word {
+    bytes value = 1;
+}
+
+message Info {
+    int32 count = 1;
+}
+
+service CounterService {
+    rpc Count(stream Word) returns (Info);
+}
+```
+
+After generating the code, implement the server:
+
+```php
+use Amp\Cancellation;
+use Counter\Api\V1\CounterServiceServer;
+use Counter\Api\V1\Info;
+use Counter\Api\V1\Word;
+use Thesis\Grpc\Metadata;
+use Thesis\Grpc\Server;
+
+/**
+ * @api
+ */
+final readonly class CounterServer implements CounterServiceServer
+{
+    #[\Override]
+    public function count(Server\ClientStreamChannel $stream, Metadata $md, Cancellation $cancellation): void
+    {
+        $bytes = 0;
+
+        foreach ($stream as $message) {
+            $bytes += \strlen($message->value);
+        }
+
+        $stream->close(new Info($bytes));
+    }
+}
+```
+
+And register it:
+
+```php
+$server = new Server\Builder()
+    ->withServices(new AuthenticationServiceServerRegistry(new AuthenticationServer()))
+    ->withServices(new CounterServiceServerRegistry(new CounterServer()))
+    ->build();
+```
+
+Note that a single server instance can host multiple service handlers.
+
+On the client side, calling `count()` returns a stream with two methods: `send()`, which transmits messages to the server, and `close()`, which finalizes the stream and waits for the server's response. Everything operates in non-blocking mode — if needed, the stream can be wrapped in `\Amp\async()`.
+
+```php
+use Counter\Api\V1\CounterServiceClient;
+use Counter\Api\V1\Word;
+use Thesis\Grpc\Client;
+
+$client = new CounterServiceClient(
+    new Client\Builder()
+        ->build(),
+);
+
+$words = $client->count();
+
+for ($i = 0; $i < 10; ++$i) {
+    $words->send(new Word(random_bytes(10)));
+}
+
+dump($words->close()->count); // 100
+```
