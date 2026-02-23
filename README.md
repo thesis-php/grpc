@@ -590,3 +590,122 @@ foreach ($words as $word) {
 
 dump($bytes);
 ```
+
+### Bidirectional Streaming
+
+Finally, the most powerful and most interesting streaming pattern — bidirectional streaming. Both the client and the server can send and receive messages freely, at any time. A classic use case for this pattern is a message queue. Let's model a simple one and implement it end to end.
+
+```protobuf
+syntax = "proto3";
+
+package queue.api.v1;
+
+message FromClient {
+    message ReadRequest {
+        string topic = 1;
+        int32 qos = 2;
+    }
+
+    message AckRequest {}
+
+    oneof event {
+        ReadRequest read_request = 1;
+        AckRequest ack_request = 2;
+    }
+}
+
+message FromServer {
+    message Message {
+        string content = 1;
+    }
+
+    message WriteRequest {
+        Message message = 1;
+    }
+
+    message CloseRequest {}
+
+    oneof event {
+        WriteRequest write_request = 1;
+        CloseRequest close_request = 2;
+    }
+}
+
+service QueueService {
+    rpc Subscribe(stream FromClient) returns (stream FromServer);
+}
+```
+
+The communication flow works as follows:
+
+1. The client sends a subscription request (`FromClient\ReadRequest`) specifying a topic and a QoS (quantity of messages to receive).
+2. The server delivers the requested number of messages (`FromServer\WriteRequest`), then waits for an acknowledgement (`FromClient\AckRequest`) from the client.
+3. This cycle repeats until the client decides to unsubscribe (`Stream::close()`).
+4. The stream is then closed by both sides.
+
+Server implementation:
+
+```php
+use Amp\Cancellation;
+use Queue\Api\V1\FromClient;
+use Queue\Api\V1\FromServer;
+use Queue\Api\V1\QueueServiceServer;
+use Thesis\Grpc\Metadata;
+use Thesis\Grpc\Server;
+
+final readonly class QueueServer implements QueueServiceServer
+{
+    #[\Override]
+    public function subscribe(Server\BidirectionalStreamChannel $stream, Metadata $md, Cancellation $cancellation): void
+    {
+        foreach ($stream as $request) {
+            if ($request->event instanceof FromClient\EventReadRequest) {
+                dump("subscription for queue '{$request->event->readRequest->topic}' received");
+
+                for ($i = 0; $i < $request->event->readRequest->qos; ++$i) {
+                    $stream->send(new FromServer(new FromServer\EventWriteRequest(
+                        new FromServer\WriteRequest(new FromServer\Message(random_bytes(10)))
+                    )));
+                }
+
+                $request = $stream->receive();
+                \assert($request->event instanceof FromClient\EventAckRequest);
+                dump('messages acked');
+            }
+        }
+
+        $stream->send(new FromServer(new FromServer\EventCloseRequest(new FromServer\CloseRequest())));
+        $stream->close();
+        dump('stream closed');
+    }
+}
+```
+
+Client implementation:
+
+```php
+use Queue\Api\V1\FromClient;
+use Queue\Api\V1\QueueServiceClient;
+use Thesis\Grpc\Client;
+
+$client = new QueueServiceClient(new Client\Builder()->build());
+
+$queue = $client->subscribe();
+
+$queue->send(new FromClient(
+    new FromClient\EventReadRequest(
+        new FromClient\ReadRequest(
+            topic: 'messages',
+            qos: 5,
+        ),
+    ),
+));
+
+for ($i = 0; $i < 5; ++$i) {
+    dump($queue->receive());
+}
+
+$queue->send(new FromClient(new FromClient\EventAckRequest(new FromClient\AckRequest())));
+$queue->close();
+dump($queue->receive()); // CloseRequest
+```
