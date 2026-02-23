@@ -30,6 +30,14 @@ final readonly class ClientStreamChannel implements \IteratorAggregate
         $this->stream->close();
     }
 
+    /**
+     * @return TRequest
+     */
+    public function receive(): object
+    {
+        return $this->stream->receive();
+    }
+
     #[\Override]
     public function getIterator(): \Traversable
     {
