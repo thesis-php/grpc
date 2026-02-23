@@ -21,6 +21,14 @@ final readonly class ServerStreamChannel implements \IteratorAggregate
         private ClientStream $stream,
     ) {}
 
+    /**
+     * @return TResponse
+     */
+    public function receive(): object
+    {
+        return $this->stream->receive();
+    }
+
     #[\Override]
     public function getIterator(): \Traversable
     {
