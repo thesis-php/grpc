@@ -50,6 +50,7 @@
     },
     "autoload-dev": {
         "psr-4": {
+            "Chat\\Api\\V1\\": "tests/genproto/Chat/Api/V1/",
             "Echos\\Api\\V1\\": "tests/genproto/Echos/Api/V1/",
             "File\\Api\\V1\\": "tests/genproto/File/Api/V1/",
             "Thesis\\Grpc\\": "tests/",
@@ -58,7 +59,8 @@
         "files": [
             "tests/genproto/Echos/Api/V1/autoload.metadata.php",
             "tests/genproto/File/Api/V1/autoload.metadata.php",
-            "tests/genproto/Topic/Api/V1/autoload.metadata.php"
+            "tests/genproto/Topic/Api/V1/autoload.metadata.php",
+            "tests/genproto/Chat/Api/V1/autoload.metadata.php"
         ]
     },
     "config": {
