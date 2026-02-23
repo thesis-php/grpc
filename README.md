@@ -267,3 +267,168 @@ $client = new AuthenticationServiceClient(
         ->build(),
 );
 ```
+
+### Stream Decorators
+
+For more advanced use cases, you can decorate streams directly. This allows you to intercept every individual message flowing through a stream — useful for logging, performance metrics, tracing, or any other cross-cutting concern.
+
+Let's implement a server-side stream decorator that logs every incoming and outgoing message:
+
+```php
+use Psr\Log\LoggerInterface;
+use Thesis\Grpc\Server;
+use Thesis\Grpc\ServerStream;
+
+/**
+ * @api
+ * @template-covariant In of object
+ * @template Out of object
+ * @template-extends Server\DecoratedStream<In, Out>
+ */
+final class LoggingServerStream extends Server\DecoratedStream
+{
+    public function __construct(
+        ServerStream $stream,
+        private readonly LoggerInterface $logger,
+    ) {
+        parent::__construct($stream);
+    }
+
+    #[\Override]
+    public function send(object $message): void
+    {
+        $this->logger->info('message "{type}" was sent', [
+            'type' => $message::class,
+        ]);
+
+        parent::send($message);
+    }
+
+    #[\Override]
+    public function receive(): object
+    {
+        $message = parent::receive();
+
+        $this->logger->info('message "{type}" was received', [
+            'type' => $message::class,
+        ]);
+
+        return $message;
+    }
+}
+```
+
+Now wire it up via an interceptor that substitutes the original stream with the decorated one:
+
+```php
+use Amp\Cancellation;
+use Psr\Log\LoggerInterface;
+use Thesis\Grpc\Metadata;
+use Thesis\Grpc\Server;
+use Thesis\Grpc\Server\StreamInfo;
+use Thesis\Grpc\ServerStream;
+
+final readonly class LoggingServerInterceptor implements Server\Interceptor
+{
+    public function __construct(
+        private LoggerInterface $logger,
+    ) {}
+
+    #[\Override]
+    public function intercept(ServerStream $stream, StreamInfo $info, Metadata $md, Cancellation $cancellation, callable $next): void
+    {
+        $next(new LoggingServerStream($stream, $this->logger), $info, $md, $cancellation);
+    }
+}
+```
+
+Register the interceptor on the server:
+
+```php
+$server = new Server\Builder()
+    ->withInterceptors(new LoggingServerInterceptor(/** LoggerInterface implementation */))
+    ->build();
+```
+
+The same approach works on the client side. First, the stream decorator:
+
+```php
+use Psr\Log\LoggerInterface;
+use Thesis\Grpc\Client;
+use Thesis\Grpc\ClientStream;
+
+/**
+ * @api
+ * @template In of object
+ * @template-covariant Out of object
+ * @template-extends Client\DecoratedStream<In, Out>
+ */
+final readonly class LoggingClientStream extends Client\DecoratedStream
+{
+    public function __construct(
+        ClientStream $stream,
+        private LoggerInterface $logger,
+    ) {
+        parent::__construct($stream);
+    }
+
+    #[\Override]
+    public function send(object $message): void
+    {
+        $this->logger->info('message "{type}" was sent', [
+            'type' => $message::class,
+        ]);
+
+        parent::send($message);
+    }
+
+    #[\Override]
+    public function receive(): object
+    {
+        $message = parent::receive();
+
+        $this->logger->info('message "{type}" was received', [
+            'type' => $message::class,
+        ]);
+
+        return $message;
+    }
+}
+```
+
+The interceptor that substitutes the stream:
+
+```php
+use Amp\Cancellation;
+use Psr\Log\LoggerInterface;
+use Thesis\Grpc\Client;
+use Thesis\Grpc\Client\Invoke;
+use Thesis\Grpc\ClientStream;
+use Thesis\Grpc\Metadata;
+
+final readonly class LoggingClientInterceptor implements Client\Interceptor
+{
+    public function __construct(
+        private LoggerInterface $logger,
+    ) {}
+
+    #[\Override]
+    public function intercept(Invoke $invoke, Metadata $md, Cancellation $cancellation, callable $next): ClientStream
+    {
+        return new LoggingClientStream(
+            $next($invoke, $md, $cancellation),
+            $this->logger,
+        );
+    }
+}
+```
+
+And register it via the client builder:
+
+```php
+$client = new AuthenticationServiceClient(
+    new Client\Builder()
+        ->withInterceptors(new LoggingClientInterceptor(/** LoggerInterface implementation */))
+        ->build(),
+);
+```
