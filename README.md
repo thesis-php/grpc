@@ -5,6 +5,7 @@
 ```shell
 composer require thesis/grpc
 ```
+
 ---
 
 This library implements non-blocking gRPC for PHP. It supports all the advantages of the gRPC framework, including client, server, and bidirectional streaming — not to mention the ability to run PHP as a gRPC **server**, not just a client.
@@ -191,3 +192,78 @@ $client = new AuthenticationServiceClient(
 ```
 
 A server can support multiple compression algorithms simultaneously, serving different clients with different configurations, while each client uses exactly one. The library ships with built-in implementations for the most popular algorithms: gzip, deflate, and snappy. Some of these may require the corresponding PHP extension to be installed. If you need a custom compression strategy, implement the `Thesis\Grpc\Compression\Compressor` interface.
+
+### Interceptors
+
+The library supports interceptors for both the client and the server. For example, if you want to restrict access to authorized clients only, you can write a server-side interceptor:
+
+```php
+use Amp\Cancellation;
+use Google\Rpc\Code;
+use Thesis\Grpc\InvokeError;
+use Thesis\Grpc\Metadata;
+use Thesis\Grpc\Server;
+use Thesis\Grpc\Server\StreamInfo;
+use Thesis\Grpc\ServerStream;
+
+final readonly class ServerAuthenticationInterceptor implements Server\Interceptor
+{
+    #[\Override]
+    public function intercept(
+        ServerStream $stream,
+        StreamInfo $info,
+        Metadata $md,
+        Cancellation $cancellation,
+        callable $next,
+    ): void {
+        if (!str_ends_with($info->method, 'Authenticate') && $md->value('Authorization') !== 'supertoken') {
+            throw new InvokeError(Code::UNAUTHENTICATED);
+        }
+
+        $next($stream, $info, $md, $cancellation);
+    }
+}
+```
+
+Incoming headers — through which authorization tokens are typically passed — are available via `Metadata`. The interceptor also has access to `StreamInfo`, which exposes the current RPC method name, allowing you to selectively skip authorization checks for specific methods such as the authentication endpoint itself.
+
+Registering the interceptor on the server:
+
+```php
+$server = new Server\Builder()
+    ->withInterceptors(new ServerAuthenticationInterceptor())
+    ->build();
+```
+
+The same pattern applies on the client side. Here is a client interceptor that automatically attaches an authorization token to every outgoing request:
+
+```php
+use Amp\Cancellation;
+use Thesis\Grpc\Client;
+use Thesis\Grpc\Client\Invoke;
+use Thesis\Grpc\ClientStream;
+use Thesis\Grpc\Metadata;
+
+final readonly class ClientAuthenticationInterceptor implements Client\Interceptor
+{
+    #[\Override]
+    public function intercept(
+        Invoke $invoke,
+        Metadata $md,
+        Cancellation $cancellation,
+        callable $next,
+    ): ClientStream {
+        return $next($invoke, $md->with('Authorization', 'supertoken'), $cancellation);
+    }
+}
+```
+
+Registering it on the client:
+
+```php
+$client = new AuthenticationServiceClient(
+    new Client\Builder()
+        ->withInterceptors(new ClientAuthenticationInterceptor())
+        ->build(),
+);
+```
