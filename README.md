@@ -6,6 +6,20 @@
 composer require thesis/grpc
 ```
 
+### Contents
+- [Requirements](#requirements)
+- [Unary requests](#unary-requests)
+- [Implementing the Server](#implementing-the-server)
+- [Starting the Server](#starting-the-server)
+- [Using the Client](#using-the-client)
+- [Error handling](#error-handling)
+- [Compression](#compression)
+- [Interceptors](#interceptors)
+- [Stream decorators](#stream-decorators)
+- [Client streaming](#client-streaming)
+- [Server streaming](#server-streaming)
+- [Bidirectional streaming](#bidirectional-streaming)
+
 ---
 
 This library implements non-blocking gRPC for PHP. It supports all the advantages of the gRPC framework, including client, server, and bidirectional streaming — not to mention the ability to run PHP as a gRPC **server**, not just a client.
