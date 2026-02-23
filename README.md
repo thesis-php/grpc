@@ -164,3 +164,30 @@ try {
     dump($e->statusCode, $e->statusMessage, $e->details);
 }
 ```
+
+### Compression
+
+You can configure compression between the client and the server. If the client compresses protobuf messages using gzip, the server must support it as well — otherwise you will receive an `UNIMPLEMENTED` error. Compression is configured via the respective builders.
+
+Configuring compression on the server:
+
+```php
+$server = new Server\Builder()
+    ->withServices(new AuthenticationServiceServerRegistry(
+        new AuthenticationServer(),
+    ))
+    ->withCompressors(new GzipCompressor())
+    ->build();
+```
+
+And on the client:
+
+```php
+$client = new AuthenticationServiceClient(
+    new Client\Builder()
+        ->withCompression(new GzipCompressor())
+        ->build(),
+);
+```
+
+A server can support multiple compression algorithms simultaneously, serving different clients with different configurations, while each client uses exactly one. The library ships with built-in implementations for the most popular algorithms: gzip, deflate, and snappy. Some of these may require the corresponding PHP extension to be installed. If you need a custom compression strategy, implement the `Thesis\Grpc\Compression\Compressor` interface.
