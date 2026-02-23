@@ -517,3 +517,76 @@ for ($i = 0; $i < 10; ++$i) {
 
 dump($words->close()->count); // 100
 ```
+
+### Server Streaming
+
+The next pattern is server streaming — the mirror image of client streaming. It is again a unidirectional flow of messages, but this time originating from the server. The client sends an initial request to establish the connection, then receives a stream it can read from until the server closes it.
+
+As an example, let's ask the server to generate a set of random words, with the desired count specified in the initial request. We'll adapt the proto schema from the previous section:
+
+```protobuf
+syntax = "proto3";
+
+package counter.api.v1;
+
+message Word {
+    bytes value = 1;
+}
+
+message Info {
+    int32 count = 1;
+}
+
+service CounterService {
+    rpc Count(Info) returns (stream Word);
+}
+```
+
+The server implementation now iterates up to the requested count, streaming each word back to the client before closing the stream:
+
+```php
+use Amp\Cancellation;
+use Counter\Api\V1\Info;
+use Counter\Api\V1\Word;
+use Thesis\Grpc\Metadata;
+use Thesis\Grpc\Server;
+
+/**
+ * @api
+ */
+final readonly class CounterServer implements CounterServiceServer
+{
+    #[\Override]
+    public function count(Info $request, Server\ServerStreamChannel $stream, Metadata $md, Cancellation $cancellation): void
+    {
+        for ($i = 0; $i < $request->count; ++$i) {
+            $stream->send(new Word(random_bytes(10)));
+        }
+
+        $stream->close();
+    }
+}
+```
+
+On the client side, the stream is iterable — the loop runs until the server closes the connection:
+
+```php
+use Counter\Api\V1\CounterServiceClient;
+use Counter\Api\V1\Info;
+use Thesis\Grpc\Client;
+
+$client = new CounterServiceClient(
+    new Client\Builder()
+        ->build(),
+);
+
+$words = $client->count(new Info(10));
+
+$bytes = 0;
+
+foreach ($words as $word) {
+    $bytes += \strlen($word->value);
+}
+
+dump($bytes);
+```
