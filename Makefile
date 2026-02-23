@@ -138,7 +138,7 @@ compile-test-stub:
 	    --plugin=protoc-gen-php-plugin=/usr/local/bin/protoc-gen-php \
 	    tests/protos/*.proto \
 	    --php-plugin_out=tests/genproto
-
+.PHONY: compile-test-stub
 # -----------------------
 
 help:
