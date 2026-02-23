@@ -51,7 +51,7 @@ final class ClientStreamTest extends TestCase
         $this->server->stop();
     }
 
-    public function testUploaded(): void
+    public function testClientStream(): void
     {
         $client = new FileServiceClient(new Client\Builder()->build());
 

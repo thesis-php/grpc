@@ -41,7 +41,7 @@ final class ServerStreamTest extends TestCase
         $this->server->stop();
     }
 
-    public function testEventReceived(): void
+    public function testServerStream(): void
     {
         $client = new TopicServiceClient(new Client\Builder()->build());
 
