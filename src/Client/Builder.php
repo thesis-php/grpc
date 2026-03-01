@@ -151,7 +151,7 @@ final class Builder
 
     public function build(): Client
     {
-        return new Client(
+        return new Internal\AmphpHttpClient(
             host: $this->host ?? self::DEFAULT_HOST,
             client: $this->httpclient ?? new HttpClientBuilder()
                 ->usingPool(ConnectionLimitingPool::byAuthority(
