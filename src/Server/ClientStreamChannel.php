@@ -22,15 +22,6 @@ final readonly class ClientStreamChannel implements \IteratorAggregate
     ) {}
 
     /**
-     * @param TResponse $response
-     */
-    public function close(object $response): void
-    {
-        $this->stream->send($response);
-        $this->stream->close();
-    }
-
-    /**
      * @return TRequest
      */
     public function receive(): object

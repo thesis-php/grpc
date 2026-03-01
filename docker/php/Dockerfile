@@ -1,7 +1,7 @@
 FROM alpine:3.20 AS protoc
 
 ARG PROTOC_VERSION=33.5
-ARG PROTOC_PLUGIN_VERSION=0.1.7
+ARG PROTOC_PLUGIN_VERSION=0.1.8
 
 RUN apk add --no-cache curl unzip && \
     curl -LO "https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOC_VERSION}/protoc-${PROTOC_VERSION}-linux-x86_64.zip" && \

@@ -83,7 +83,7 @@ final class ClientStreamTest extends TestCase
 final readonly class ClientStreamServer implements FileServiceServer
 {
     #[\Override]
-    public function upload(Server\ClientStreamChannel $stream, Metadata $md, Cancellation $cancellation): void
+    public function upload(Server\ClientStreamChannel $stream, Metadata $md, Cancellation $cancellation): FileInfo
     {
         $size = 0;
 
@@ -92,7 +92,7 @@ final readonly class ClientStreamServer implements FileServiceServer
             $size += \strlen($chunk->content);
         }
 
-        $stream->close(new FileInfo($size));
+        return new FileInfo($size);
     }
 }
 
