@@ -5,15 +5,16 @@ declare(strict_types=1);
 namespace Thesis\Grpc\Server\Internal\Http2;
 
 use Amp\Cancellation;
+use Amp\CompositeCancellation;
+use Amp\DeferredCancellation;
 use Amp\Future;
 use Amp\Http\HttpStatus;
 use Amp\Http\Server\Request;
 use Amp\Http\Server\RequestHandler;
 use Amp\Http\Server\Response;
 use Amp\Http\Server\Trailers;
-use Amp\NullCancellation;
+use Amp\TimeoutCancellation;
 use Google\Rpc;
-use Revolt\EventLoop;
 use Thesis\Grpc\Metadata;
 use Thesis\Grpc\Server\Interceptor;
 use Thesis\Grpc\Server\MessageCompressorFactory;
@@ -23,31 +24,36 @@ use Thesis\Grpc\Server\StreamInfo;
 use Thesis\Grpc\ServerStream;
 use Thesis\Grpc\UnimplementedException;
 use Thesis\Protobuf;
+use function Amp\async;
 
 /**
  * @internal
+ * @phpstan-type HandlerEntry = object{future: Future<void>, cancellation: DeferredCancellation}
  */
-final readonly class ServerRequestHandler implements RequestHandler
+final class ServerRequestHandler implements RequestHandler
 {
-    private Router $router;
+    private readonly Router $router;
 
-    private InterceptorComposer $interceptor;
+    private readonly InterceptorComposer $interceptor;
+
+    /** @var \WeakMap<ServerStream<*, *>, HandlerEntry> */
+    private \WeakMap $pending;
 
     /**
      * @param list<Service> $services
      * @param list<Interceptor> $interceptors
      */
     public function __construct(
-        private MessageEncoderFactory $encoderFactory,
-        private MessageCompressorFactory $compressorFactory,
+        private readonly MessageEncoderFactory $encoderFactory,
+        private readonly MessageCompressorFactory $compressorFactory,
         Protobuf\Encoder $protobuf,
         array $services,
         array $interceptors,
     ) {
+        $this->pending = new \WeakMap();
         $this->router = new Router($services);
         $this->interceptor = new InterceptorComposer([
             new StreamHandleInterceptor($protobuf),
-            new ParseGrpcTimeoutCancellationInterceptor(),
             ...$interceptors,
         ]);
     }
@@ -111,9 +117,29 @@ final readonly class ServerRequestHandler implements RequestHandler
             $response,
         );
 
-        $cancellation = new NullCancellation();
+        $cancellation = new DeferredCancellation();
 
-        EventLoop::queue(
+        $cancellations = [
+            $cancellation->getCancellation(),
+        ];
+
+        if (($timeout = Metadata\parseTimeout($md)) !== null) {
+            $cancellations[] = new TimeoutCancellation($timeout->toSeconds());
+        }
+
+        $handler = static fn(
+            ServerStream $stream,
+            StreamInfo $info,
+            Metadata $md,
+            Cancellation $cancellation,
+        ) => $rpc->handler->handle(
+            $stream,
+            $md,
+            $cancellation,
+        );
+
+        /** @var Future<void> $future */
+        $future = async(
             $this->interceptor->intercept(...),
             $stream,
             new StreamInfo(
@@ -121,19 +147,34 @@ final readonly class ServerRequestHandler implements RequestHandler
                 $rpc->type,
             ),
             $md,
-            $cancellation,
-            static fn(
-                ServerStream $stream,
-                StreamInfo $info,
-                Metadata $md,
-                Cancellation $cancellation,
-            ) => $rpc->handler->handle(
-                $stream,
-                $md,
-                $cancellation,
-            ),
+            new CompositeCancellation(...$cancellations),
+            $handler,
         );
 
+        $future->ignore();
+
+        $this->pending[$stream] = new readonly class ($future, $cancellation) {
+            /**
+             * @param Future<void> $future
+             */
+            public function __construct(
+                public Future $future,
+                public DeferredCancellation $cancellation,
+            ) {}
+        };
+
         return $response;
+    }
+
+    public function stop(Cancellation $cancellation): void
+    {
+        $futures = [];
+
+        foreach ($this->pending as $entry) {
+            $entry->cancellation->cancel();
+            $futures[] = $entry->future;
+        }
+
+        Future\awaitAll($futures, $cancellation);
     }
 }

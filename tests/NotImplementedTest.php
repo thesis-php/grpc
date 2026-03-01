@@ -11,10 +11,12 @@ use Echos\Api\V1\EchoServiceServer;
 use Echos\Api\V1\EchoServiceServerRegistry;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Thesis\Grpc\Client\Internal\AmphpHttpClient;
 use Thesis\Grpc\Client\Invoke;
+use Thesis\Grpc\Server\Internal\AmphpHttpServer;
 
-#[CoversClass(Server::class)]
-#[CoversClass(Client::class)]
+#[CoversClass(AmphpHttpServer::class)]
+#[CoversClass(AmphpHttpClient::class)]
 final class NotImplementedTest extends TestCase
 {
     private Server $server;
@@ -42,7 +44,7 @@ final class NotImplementedTest extends TestCase
     {
         $client = new Client\Builder()->build();
 
-        self::expectExceptionMessage('A grpc error with status code "UNIMPLEMENTED" and message "Malformed method name: /" occurred');
+        $this->expectExceptionMessage('A grpc error with status code "UNIMPLEMENTED" and message "Malformed method name: /" occurred');
         $client->invoke(new EchoRequest(), new Invoke('/', EchoResponse::class));
     }
 
@@ -50,7 +52,7 @@ final class NotImplementedTest extends TestCase
     {
         $client = new Client\Builder()->build();
 
-        self::expectExceptionMessage('A grpc error with status code "UNIMPLEMENTED" and message "Unknown service echos.api.v2.EchoService" occurred');
+        $this->expectExceptionMessage('A grpc error with status code "UNIMPLEMENTED" and message "Unknown service echos.api.v2.EchoService" occurred');
         $client->invoke(new EchoRequest(), new Invoke('/echos.api.v2.EchoService/Echo', EchoResponse::class));
     }
 
@@ -58,7 +60,7 @@ final class NotImplementedTest extends TestCase
     {
         $client = new Client\Builder()->build();
 
-        self::expectExceptionMessage('A grpc error with status code "UNIMPLEMENTED" and message "Unknown method Ping for service echos.api.v1.EchoService" occurred');
+        $this->expectExceptionMessage('A grpc error with status code "UNIMPLEMENTED" and message "Unknown method Ping for service echos.api.v1.EchoService" occurred');
         $client->invoke(new EchoRequest(), new Invoke('/echos.api.v1.EchoService/Ping', EchoResponse::class));
     }
 }

@@ -74,7 +74,15 @@ final readonly class StreamFactory
         // causing an error on the server side — after a certain timeout, the server will detect that the client unexpectedly closed the connection.
         // Therefore, after calling {@see ConcurrentClientStream::close()}, we must wait for a future that completes successfully
         // only after the entire body and trailers have been successfully transmitted to the server.
-        $request->addEventListener(new RequestEventListener()->onRequestBodyEnd($deferred->complete(...))); // @phpstan-ignore argument.type
+        $request->addEventListener(
+            new RequestEventListener()
+                ->onRequestBodyEnd($deferred->complete(...))  // @phpstan-ignore argument.type
+                ->onRequestFailed(static function (Request $request, \Throwable $e) use ($deferred): void {
+                    if (!$deferred->isComplete()) {
+                        $deferred->error($e);
+                    }
+                }),
+        );
 
         /** @var Future<Response> $response */
         $response = async($this->http->request(...), $request, $cancellation);

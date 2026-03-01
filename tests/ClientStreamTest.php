@@ -12,12 +12,14 @@ use File\Api\V1\FileServiceServer;
 use File\Api\V1\FileServiceServerRegistry;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Thesis\Grpc\Client\Internal\AmphpHttpClient;
 use Thesis\Grpc\Server\CallableInterceptor;
 use Thesis\Grpc\Server\ClientStreamHandler;
+use Thesis\Grpc\Server\Internal\AmphpHttpServer;
 use Thesis\Grpc\Server\StreamInfo;
 
-#[CoversClass(Server::class)]
-#[CoversClass(Client::class)]
+#[CoversClass(AmphpHttpServer::class)]
+#[CoversClass(AmphpHttpClient::class)]
 #[CoversClass(ClientStreamHandler::class)]
 final class ClientStreamTest extends TestCase
 {

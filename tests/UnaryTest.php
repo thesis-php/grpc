@@ -14,13 +14,15 @@ use Google\Rpc\BadRequest;
 use Google\Rpc\Code;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Thesis\Grpc\Client\Internal\AmphpHttpClient;
 use Thesis\Grpc\Client\Invoke;
+use Thesis\Grpc\Server\Internal\AmphpHttpServer;
 use Thesis\Grpc\Server\UnaryHandler;
 use Thesis\Grpc\Stub\AuthorizationClientInterceptor;
 use Thesis\Grpc\Stub\AuthorizationServerInterceptor;
 
-#[CoversClass(Server::class)]
-#[CoversClass(Client::class)]
+#[CoversClass(AmphpHttpServer::class)]
+#[CoversClass(AmphpHttpClient::class)]
 #[CoversClass(UnaryHandler::class)]
 final class UnaryTest extends TestCase
 {

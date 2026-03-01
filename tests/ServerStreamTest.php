@@ -10,6 +10,8 @@ use Google\Protobuf\Timestamp;
 use Google\Rpc\Code;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Thesis\Grpc\Client\Internal\AmphpHttpClient;
+use Thesis\Grpc\Server\Internal\AmphpHttpServer;
 use Thesis\Grpc\Server\ServerStreamHandler;
 use Topic\Api\V1\Event;
 use Topic\Api\V1\SubscribeRequest;
@@ -17,11 +19,8 @@ use Topic\Api\V1\TopicServiceClient;
 use Topic\Api\V1\TopicServiceServer;
 use Topic\Api\V1\TopicServiceServerRegistry;
 
-/**
- * @api
- */
-#[CoversClass(Server::class)]
-#[CoversClass(Client::class)]
+#[CoversClass(AmphpHttpServer::class)]
+#[CoversClass(AmphpHttpClient::class)]
 #[CoversClass(ServerStreamHandler::class)]
 final class ServerStreamTest extends TestCase
 {

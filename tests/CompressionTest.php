@@ -12,11 +12,13 @@ use Echos\Api\V1\EchoServiceServer;
 use Echos\Api\V1\EchoServiceServerRegistry;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Thesis\Grpc\Client\Internal\AmphpHttpClient;
 use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Compression\GzipCompressor;
+use Thesis\Grpc\Server\Internal\AmphpHttpServer;
 
-#[CoversClass(Server::class)]
-#[CoversClass(Client::class)]
+#[CoversClass(AmphpHttpServer::class)]
+#[CoversClass(AmphpHttpClient::class)]
 #[CoversClass(Compressor::class)]
 final class CompressionTest extends TestCase
 {
@@ -84,7 +86,7 @@ final class CompressionTest extends TestCase
                 ->build(),
         );
 
-        self::expectExceptionMessage('A grpc error with status code "UNIMPLEMENTED" and message "Decompression is not supported by server: strrev" occurred');
+        $this->expectExceptionMessage('A grpc error with status code "UNIMPLEMENTED" and message "Decompression is not supported by server: strrev" occurred');
         $client->echo(new EchoRequest('Hello, gRPC'));
     }
 }
