@@ -11,10 +11,12 @@ use Chat\Api\V1\MessengerServiceServer;
 use Chat\Api\V1\MessengerServiceServerRegistry;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Thesis\Grpc\Client\Internal\AmphpHttpClient;
 use Thesis\Grpc\Server\BidirectionalStreamHandler;
+use Thesis\Grpc\Server\Internal\AmphpHttpServer;
 
-#[CoversClass(Server::class)]
-#[CoversClass(Client::class)]
+#[CoversClass(AmphpHttpServer::class)]
+#[CoversClass(AmphpHttpClient::class)]
 #[CoversClass(BidirectionalStreamHandler::class)]
 final class BidirectionalStreamTest extends TestCase
 {

@@ -19,6 +19,7 @@ composer require thesis/grpc
 - [Client streaming](#client-streaming)
 - [Server streaming](#server-streaming)
 - [Bidirectional streaming](#bidirectional-streaming)
+- [Graceful Shutdown](#graceful-shutdown)
 
 ---
 
@@ -723,3 +724,31 @@ $queue->send(new FromClient(new FromClient\EventAckRequest(new FromClient\AckReq
 $queue->close();
 dump($queue->receive()); // CloseRequest
 ```
+
+### Graceful Shutdown
+
+When `Server::stop()` is called, the server will stop accepting new connections and requests, then wait for all active handlers to finish processing.
+Once all handlers have completed, `stop()` returns normally. If the handlers take too long, you can pass a `Cancellation` to set an upper bound on how long to wait:
+```php
+use Amp\TimeoutCancellation;
+use Auth\Api\V1\AuthenticationServiceServerRegistry;
+use Thesis\Grpc\Server;
+use function Amp\trapSignal;
+
+$server = new Server\Builder()
+    ->withServices(new AuthenticationServiceServerRegistry(
+        new AuthenticationServer(),
+    ))
+    ->build();
+
+$server->start();
+
+trapSignal([\SIGINT, \SIGTERM]);
+
+// Wait up to 30 seconds for all active handlers to finish.
+// If the timeout expires, stop() throws a CancelledException.
+$server->stop(new TimeoutCancellation(30));
+```
+
+During shutdown, the server notifies all active handlers via the `Cancellation` argument passed to each handler method.
+This means your handler implementations should check cancellation and avoid ignoring the `$cancellation` argument — otherwise the server will have no way to signal them to stop, and shutdown will block until they finish on their own.
