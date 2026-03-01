@@ -373,7 +373,7 @@ final class Builder
             $server->expose($address, $bindContext);
         }
 
-        return new Server(
+        return new Internal\AmphpHttpServer(
             server: $server,
             requestHandler: new ServerRequestHandler(
                 encoderFactory: new MessageEncoderFactory(array_values($this->encoders)),

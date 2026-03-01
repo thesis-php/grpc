@@ -25,6 +25,7 @@ $config = new Config()
 new PhpCsFixerCodingStandard()->applyTo($config, [
     'native_constant_invocation' => false,
     'final_public_method_for_abstract_class' => false,
+    'fully_qualified_strict_types' => false,
 ]);
 
 return $config;
