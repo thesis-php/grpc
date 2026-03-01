@@ -17,7 +17,7 @@ use Thesis\Grpc\ServerStream;
 final readonly class ClientStreamHandler implements Handler
 {
     /**
-     * @param \Closure(ClientStreamChannel<TRequest, TResponse>, Metadata, Cancellation): void $handler
+     * @param \Closure(ClientStreamChannel<TRequest, TResponse>, Metadata, Cancellation): TResponse $handler
      */
     public function __construct(
         private \Closure $handler,
@@ -26,6 +26,8 @@ final readonly class ClientStreamHandler implements Handler
     #[\Override]
     public function handle(ServerStream $stream, Metadata $md, Cancellation $cancellation): void
     {
-        ($this->handler)(new ClientStreamChannel($stream), $md, $cancellation);
+        $response = ($this->handler)(new ClientStreamChannel($stream), $md, $cancellation);
+        $stream->send($response);
+        $stream->close();
     }
 }

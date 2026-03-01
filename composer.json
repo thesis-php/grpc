@@ -1,6 +1,6 @@
 {
     "name": "thesis/grpc",
-    "description": "Thesis Grpc",
+    "description": "Non-blocking implementation of gRPC.",
     "license": "MIT",
     "type": "library",
     "authors": [

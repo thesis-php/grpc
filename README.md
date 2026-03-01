@@ -487,7 +487,7 @@ use Thesis\Grpc\Server;
 final readonly class CounterServer implements CounterServiceServer
 {
     #[\Override]
-    public function count(Server\ClientStreamChannel $stream, Metadata $md, Cancellation $cancellation): void
+    public function count(Server\ClientStreamChannel $stream, Metadata $md, Cancellation $cancellation): Info
     {
         $bytes = 0;
 
@@ -495,7 +495,7 @@ final readonly class CounterServer implements CounterServiceServer
             $bytes += \strlen($message->value);
         }
 
-        $stream->close(new Info($bytes));
+        return new Info($bytes);
     }
 }
 ```
