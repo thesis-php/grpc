@@ -54,7 +54,7 @@ final readonly class StreamFactory
         Cancellation $cancellation = new NullCancellation(),
     ): ClientStream {
         /** @var Pipeline\Queue<In> $send */
-        $send = new Pipeline\Queue(1);
+        $send = new Pipeline\Queue();
 
         /** @var DeferredFuture<null> $deferred */
         $deferred = new DeferredFuture();
@@ -74,7 +74,7 @@ final readonly class StreamFactory
         // causing an error on the server side — after a certain timeout, the server will detect that the client unexpectedly closed the connection.
         // Therefore, after calling {@see ConcurrentClientStream::close()}, we must wait for a future that completes successfully
         // only after the entire body and trailers have been successfully transmitted to the server.
-        $request->addEventListener(new RequestEventListener()->onRequestEnd($deferred->complete(...))); // @phpstan-ignore argument.type
+        $request->addEventListener(new RequestEventListener()->onRequestBodyEnd($deferred->complete(...))); // @phpstan-ignore argument.type
 
         /** @var Future<Response> $response */
         $response = async($this->http->request(...), $request, $cancellation);
