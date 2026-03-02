@@ -134,10 +134,13 @@ check: fixer-check rector-check composer-validate composer-normalize-check deps-
 .PHONY: check
 
 compile-test-stub:
-	protoc \
-	    --plugin=protoc-gen-php-plugin=/usr/local/bin/protoc-gen-php \
-	    tests/protos/*.proto \
-	    --php-plugin_out=tests/genproto
+	docker run --rm \
+	    --user 1000:1000 \
+        -v $(PWD):/workspace \
+        -w /workspace \
+        ghcr.io/thesis-php/protoc-plugin:latest \
+        --php-plugin_out=tests/genproto \
+        tests/protos/*.proto
 .PHONY: compile-test-stub
 # -----------------------
 
