@@ -86,10 +86,9 @@ final readonly class TopicServer implements TopicServiceServer
     #[\Override]
     public function subscribe(
         SubscribeRequest $request,
-        Server\ServerStreamChannel $stream,
         Metadata $md,
         Cancellation $cancellation,
-    ): void {
+    ): iterable {
         $events = [
             'payments' => [
                 new Event('payment_finished', '{"id": 1}', new Timestamp(new Number(1_771_782_096))),
@@ -100,10 +99,6 @@ final readonly class TopicServer implements TopicServiceServer
             ],
         ];
 
-        foreach ($events[$request->topic] ?? throw new InvokeError(Code::FAILED_PRECONDITION, 'Unknown topic "' . $request->topic . '"') as $it) {
-            $stream->send($it);
-        }
-
-        $stream->close();
+        yield from $events[$request->topic] ?? throw new InvokeError(Code::FAILED_PRECONDITION, 'Unknown topic "' . $request->topic . '"');
     }
 }
