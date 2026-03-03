@@ -557,7 +557,7 @@ service CounterService {
 }
 ```
 
-The server implementation now iterates up to the requested count, streaming each word back to the client before closing the stream:
+The server implementation now iterates up to the requested count, streaming each word back to the client:
 
 ```php
 use Amp\Cancellation;
@@ -572,13 +572,11 @@ use Thesis\Grpc\Server;
 final readonly class CounterServer implements CounterServiceServer
 {
     #[\Override]
-    public function count(Info $request, Server\ServerStreamChannel $stream, Metadata $md, Cancellation $cancellation): void
+    public function count(Info $request, Metadata $md, Cancellation $cancellation): iterable
     {
         for ($i = 0; $i < $request->count; ++$i) {
-            $stream->send(new Word(random_bytes(10)));
+            yield new Word(random_bytes(10));
         }
-
-        $stream->close();
     }
 }
 ```

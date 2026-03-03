@@ -17,7 +17,7 @@ use Thesis\Grpc\ServerStream;
 final readonly class ServerStreamHandler implements Handler
 {
     /**
-     * @param \Closure(TRequest, ServerStreamChannel<TRequest, TResponse>, Metadata, Cancellation): void $handler
+     * @param \Closure(TRequest, Metadata, Cancellation): iterable<array-key, TResponse> $handler
      */
     public function __construct(
         private \Closure $handler,
@@ -27,6 +27,12 @@ final readonly class ServerStreamHandler implements Handler
     public function handle(ServerStream $stream, Metadata $md, Cancellation $cancellation): void
     {
         $request = $stream->receive();
-        ($this->handler)($request, new ServerStreamChannel($stream), $md, $cancellation);
+        $messages = ($this->handler)($request, $md, $cancellation);
+
+        foreach ($messages as $message) {
+            $stream->send($message);
+        }
+
+        $stream->close();
     }
 }
