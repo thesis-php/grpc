@@ -10,7 +10,7 @@ use Amp\NullCancellation;
 /**
  * @api
  */
-interface Server
+interface Server extends ServiceRegistrar
 {
     /**
      * The server can subscribe to the {@see Cancellation} to stop automatically when it is triggered, for example on a signal.

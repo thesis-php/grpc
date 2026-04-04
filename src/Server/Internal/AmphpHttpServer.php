@@ -10,6 +10,7 @@ use Amp\Http\Server\HttpServer;
 use Amp\NullCancellation;
 use Revolt\EventLoop;
 use Thesis\Grpc\Server;
+use Thesis\Grpc\Server\Service;
 use function Amp\async;
 
 /**
@@ -67,5 +68,21 @@ final class AmphpHttpServer implements Server
     public function __destruct()
     {
         $this->stop();
+    }
+
+    #[\Override]
+    public function register(Service ...$services): void
+    {
+        if ($this->state === HttpServerState::Serve) {
+            throw new Server\ServerRunning();
+        }
+
+        $this->requestHandler->register(...$services);
+    }
+
+    #[\Override]
+    public function services(): array
+    {
+        return $this->requestHandler->services();
     }
 }
