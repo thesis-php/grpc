@@ -22,6 +22,7 @@ use Thesis\Grpc\Server\MessageEncoderFactory;
 use Thesis\Grpc\Server\Service;
 use Thesis\Grpc\Server\StreamInfo;
 use Thesis\Grpc\ServerStream;
+use Thesis\Grpc\ServiceRegistrar;
 use Thesis\Grpc\UnimplementedException;
 use Thesis\Protobuf;
 use function Amp\async;
@@ -30,7 +31,9 @@ use function Amp\async;
  * @internal
  * @phpstan-type HandlerEntry = object{future: Future<void>, cancellation: DeferredCancellation}
  */
-final class ServerRequestHandler implements RequestHandler
+final class ServerRequestHandler implements
+    RequestHandler,
+    ServiceRegistrar
 {
     private readonly Router $router;
 
@@ -40,22 +43,32 @@ final class ServerRequestHandler implements RequestHandler
     private \WeakMap $pending;
 
     /**
-     * @param list<Service> $services
      * @param list<Interceptor> $interceptors
      */
     public function __construct(
         private readonly MessageEncoderFactory $encoderFactory,
         private readonly MessageCompressorFactory $compressorFactory,
         Protobuf\Encoder $protobuf,
-        array $services,
         array $interceptors,
     ) {
         $this->pending = new \WeakMap();
-        $this->router = new Router($services);
+        $this->router = new Router();
         $this->interceptor = new InterceptorComposer([
             new StreamHandleInterceptor($protobuf),
             ...$interceptors,
         ]);
+    }
+
+    #[\Override]
+    public function register(Service ...$services): void
+    {
+        array_walk($services, $this->router->addService(...));
+    }
+
+    #[\Override]
+    public function services(): array
+    {
+        return iterator_to_array($this->router, preserve_keys: false);
     }
 
     #[\Override]

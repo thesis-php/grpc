@@ -103,7 +103,7 @@ phpstan: var vendor ## Analyze code using PHPStan
 	$(RUN) phpstan analyze --memory-limit=1G $(ARGS)
 .PHONY: phpstan
 
-test: var vendor ## Run tests using PHPUnit
+test: var vendor compile-test-stub ## Run tests using PHPUnit
 	$(RUN) vendor/bin/phpunit $(ARGS) --colors
 .PHONY: test
 
@@ -130,12 +130,12 @@ composer-normalize-check: ## Check that composer.json is normalized
 fix: fixer rector composer-normalize ## Run all fixing recipes
 .PHONY: fix
 
-check: fixer-check rector-check composer-validate composer-normalize-check deps-analyze phpstan compile-test-stub test  ## Run all project checks
+check: fixer-check rector-check composer-validate composer-normalize-check deps-analyze phpstan test  ## Run all project checks
 .PHONY: check
 
 compile-test-stub:
 	docker run --rm \
-	    --user 1000:1000 \
+	    --user $(CONTAINER_USER) \
         -v $(PWD):/workspace \
         -w /workspace \
         ghcr.io/thesis-php/protoc-plugin:latest \

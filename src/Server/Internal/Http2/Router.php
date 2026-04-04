@@ -11,26 +11,25 @@ use Thesis\Grpc\Server\Service;
 
 /**
  * @internal
+ * @template-implements \IteratorAggregate<array-key, Service>
  */
-final readonly class Router
+final class Router implements \IteratorAggregate
 {
     /** @var array<non-empty-string, non-empty-array<non-empty-string, Rpc>> */
-    private array $services;
+    private array $index = [];
 
-    /**
-     * @param list<Service> $services
-     */
-    public function __construct(array $services)
+    /** @var list<Service> */
+    private array $services = [];
+
+    public function addService(Service $service): void
     {
-        $this->services = array_combine(
-            array_map(static fn(Service $service) => $service->name, $services),
+        $this->services[] = $service;
+        $this->index[$service->name] = array_combine(
             array_map(
-                static fn(Service $service) => array_combine(
-                    array_map(static fn(Rpc $rpc) => $rpc->handle->method, $service->handlers),
-                    $service->handlers,
-                ),
-                $services,
+                static fn(Rpc $rpc) => $rpc->handle->method,
+                $service->handlers,
             ),
+            $service->handlers,
         );
     }
 
@@ -47,8 +46,14 @@ final readonly class Router
 
         $endpoint = Endpoint::parse($path);
 
-        $rpc = $this->services[$endpoint->service] ?? throw new InvalidRpcMethod("Unknown service {$endpoint->service}");
+        $rpc = $this->index[$endpoint->service] ?? throw new InvalidRpcMethod("Unknown service {$endpoint->service}");
 
         return $rpc[$endpoint->method] ?? throw new InvalidRpcMethod("Unknown method {$endpoint->method} for service {$endpoint->service}");
+    }
+
+    #[\Override]
+    public function getIterator(): \Traversable
+    {
+        yield from $this->services;
     }
 }

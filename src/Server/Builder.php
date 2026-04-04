@@ -373,17 +373,20 @@ final class Builder
             $server->expose($address, $bindContext);
         }
 
-        return new Internal\AmphpHttpServer(
+        $grpc = new Internal\AmphpHttpServer(
             server: $server,
             requestHandler: new ServerRequestHandler(
                 encoderFactory: new MessageEncoderFactory(array_values($this->encoders)),
                 compressorFactory: new MessageCompressorFactory($compressors),
                 protobuf: $this->protobuf ?? Protobuf\Encoder\Builder::buildDefault(),
-                services: $this->services,
                 interceptors: $this->interceptors,
             ),
             errorHandler: new ServerErrorHandler(),
         );
+
+        $grpc->register(...$this->services);
+
+        return $grpc;
     }
 
     /**
