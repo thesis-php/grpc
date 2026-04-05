@@ -88,32 +88,24 @@ final readonly class StreamCodec
         /** @var Pipeline\Queue<T> $out */
         $out = new Pipeline\Queue();
 
-        $encoder = $this->encoder;
-        $compressor = $this->compressor;
+        $parser = new Protocol\Parser(
+            $out->push(...),
+            $type,
+            $this->encoder,
+            $this->compressor,
+        );
 
         EventLoop::queue(static function () use (
-            $encoder,
-            $compressor,
+            $parser,
             $in,
             $out,
-            $type,
             $cancellation,
         ): void {
             try {
-                while (($message = $in->read($cancellation)) !== null) {
-                    \assert($message !== '', 'gRPC frame must not be empty.');
-
-                    $frame = Protocol\decodeFrame($message);
-
-                    $buffer = $frame->buffer;
-
-                    if ($frame->compressed && $buffer !== '') {
-                        $buffer = $compressor->decompress($buffer);
-                    }
-
-                    $out->push($encoder->decode($buffer, $type));
+                while (($chunk = $in->read($cancellation)) !== null) {
+                    $parser->push($chunk);
                 }
-            } catch (Pipeline\DisposedException|CancelledException) {
+            } catch (Pipeline\DisposedException|CancelledException) { // @phpstan-ignore catch.neverThrown, catch.neverThrown
             } catch (\Throwable $e) {
                 $out->error($e);
             } finally {
