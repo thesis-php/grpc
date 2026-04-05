@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Thesis\Grpc\Server\Internal\Http2;
 
 use Amp\ByteStream\ReadableIterableStream;
+use Amp\Cancellation;
 use Amp\DeferredFuture;
 use Amp\Http\Server\Request;
 use Amp\Http\Server\Response;
@@ -42,6 +43,7 @@ final readonly class StreamFactory
         Handle $handle,
         Request $request,
         Response $response,
+        Cancellation $cancellation,
     ): ServerStream {
         /** @var Pipeline\Queue<object> $send */
         $send = new Pipeline\Queue();
@@ -51,12 +53,12 @@ final readonly class StreamFactory
 
         $response->setTrailers(new Trailers($trailers->getFuture()));
         $response->setBody(new ReadableIterableStream(
-            $this->codec->encode($send->iterate()),
+            $this->codec->encode($send->iterate(), $cancellation),
         ));
 
         return new ConcurrentServerStream(
             new Metadata($request->getHeaders()),
-            $this->codec->decode($request->getBody(), $handle->type),
+            $this->codec->decode($request->getBody(), $handle->type, $cancellation),
             $send,
             $trailers,
         );

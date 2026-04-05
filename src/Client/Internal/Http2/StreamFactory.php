@@ -63,7 +63,7 @@ final readonly class StreamFactory
             uri: $this->uri->create($invoke->method),
             method: 'POST',
             body: StreamedContent::fromStream(
-                new ReadableIterableStream($this->codec->encode($send->iterate())),
+                new ReadableIterableStream($this->codec->encode($send->iterate(), $cancellation)),
             ),
         );
         $request->setProtocolVersions(['2']);
@@ -90,7 +90,7 @@ final readonly class StreamFactory
         return new ConcurrentClientStream(
             responseFuture: $response,
             send: $send,
-            decode: fn(Response $response) => $this->codec->decode($response->getBody(), $invoke->type),
+            decode: fn(Response $response) => $this->codec->decode($response->getBody(), $invoke->type, $cancellation),
             errors: $this->errors,
             complete: $deferred->getFuture(),
         );

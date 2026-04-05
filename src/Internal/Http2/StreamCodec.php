@@ -4,6 +4,9 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc\Internal\Http2;
 
+use Amp\ByteStream\ReadableStream;
+use Amp\Cancellation;
+use Amp\CancelledException;
 use Amp\Pipeline;
 use Revolt\EventLoop;
 use Thesis\Grpc\Compression\Compressor;
@@ -25,8 +28,10 @@ final readonly class StreamCodec
      * @param Pipeline\ConcurrentIterator<T> $in
      * @return Pipeline\ConcurrentIterator<non-empty-string>
      */
-    public function encode(Pipeline\ConcurrentIterator $in): Pipeline\ConcurrentIterator
-    {
+    public function encode(
+        Pipeline\ConcurrentIterator $in,
+        Cancellation $cancellation,
+    ): Pipeline\ConcurrentIterator {
         /** @var Pipeline\Queue<non-empty-string> $out */
         $out = new Pipeline\Queue();
 
@@ -38,23 +43,33 @@ final readonly class StreamCodec
             $compressor,
             $in,
             $out,
+            $cancellation,
         ): void {
-            foreach ($in as $message) {
-                $buffer = $compressed = $encoder->encode($message);
+            try {
+                while ($in->continue($cancellation)) {
+                    $message = $in->getValue();
 
-                if ($buffer !== '') {
-                    $compressed = $compressor->compress($buffer);
+                    $buffer = $compressed = $encoder->encode($message);
+
+                    if ($buffer !== '') {
+                        $compressed = $compressor->compress($buffer);
+                    }
+
+                    $frame = Protocol\encodeFrame(new Protocol\Frame(
+                        $compressed !== $buffer,
+                        $compressed,
+                    ));
+
+                    $out->push($frame);
                 }
-
-                $frame = Protocol\encodeFrame(new Protocol\Frame(
-                    $compressed !== $buffer,
-                    $compressed,
-                ));
-
-                $out->push($frame);
+            } catch (Pipeline\DisposedException|CancelledException) {
+            } catch (\Throwable $e) {
+                $out->error($e);
+            } finally {
+                if (!$out->isComplete()) {
+                    $out->complete();
+                }
             }
-
-            $out->complete();
         });
 
         return $out->iterate();
@@ -62,12 +77,14 @@ final readonly class StreamCodec
 
     /**
      * @template T of object
-     * @param \Traversable<string> $in
      * @param class-string<T> $type
      * @return Pipeline\ConcurrentIterator<T>
      */
-    public function decode(\Traversable $in, string $type): Pipeline\ConcurrentIterator
-    {
+    public function decode(
+        ReadableStream $in,
+        string $type,
+        Cancellation $cancellation,
+    ): Pipeline\ConcurrentIterator {
         /** @var Pipeline\Queue<T> $out */
         $out = new Pipeline\Queue();
 
@@ -80,32 +97,30 @@ final readonly class StreamCodec
             $in,
             $out,
             $type,
+            $cancellation,
         ): void {
-            /** @var string $message */
-            foreach ($in as $message) {
-                if ($message === '') {
-                    continue;
-                }
+            try {
+                while (($message = $in->read($cancellation)) !== null) {
+                    \assert($message !== '', 'gRPC frame must not be empty.');
 
-                $frame = Protocol\decodeFrame($message);
+                    $frame = Protocol\decodeFrame($message);
 
-                $buffer = $frame->buffer;
+                    $buffer = $frame->buffer;
 
-                if ($frame->compressed && $buffer !== '') {
-                    $buffer = $compressor->decompress($buffer);
-                }
+                    if ($frame->compressed && $buffer !== '') {
+                        $buffer = $compressor->decompress($buffer);
+                    }
 
-                try {
                     $out->push($encoder->decode($buffer, $type));
-                } catch (Pipeline\DisposedException) {
-                    // If an exception occurs in the server’s interceptor stack or in the server’s request handler,
-                    // causing us to stop reading the incoming stream, we lose control over the iterator of that queue.
-                    // Therefore, it is normal to handle such an exception here.
-                    return;
+                }
+            } catch (Pipeline\DisposedException|CancelledException) {
+            } catch (\Throwable $e) {
+                $out->error($e);
+            } finally {
+                if (!$out->isComplete()) {
+                    $out->complete();
                 }
             }
-
-            $out->complete();
         });
 
         return $out->iterate();

@@ -123,13 +123,6 @@ final class ServerRequestHandler implements
 
         $response = new Response(status: HttpStatus::OK, headers: $headers->kv);
 
-        /** @var ServerStream<object, object> $stream */
-        $stream = $factory->create(
-            $rpc->handle,
-            $request,
-            $response,
-        );
-
         $cancellation = new DeferredCancellation();
 
         $cancellations = [
@@ -139,6 +132,16 @@ final class ServerRequestHandler implements
         if (($timeout = Metadata\parseTimeout($md)) !== null) {
             $cancellations[] = new TimeoutCancellation($timeout->toSeconds());
         }
+
+        $streamCancellation = new CompositeCancellation(...$cancellations);
+
+        /** @var ServerStream<object, object> $stream */
+        $stream = $factory->create(
+            $rpc->handle,
+            $request,
+            $response,
+            $streamCancellation,
+        );
 
         $handler = static fn(
             ServerStream $stream,
@@ -160,7 +163,7 @@ final class ServerRequestHandler implements
                 $rpc->type,
             ),
             $md,
-            new CompositeCancellation(...$cancellations),
+            $streamCancellation,
             $handler,
         );
 
