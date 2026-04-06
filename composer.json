@@ -30,7 +30,7 @@
         "league/uri": "^7.8",
         "psr/log": "^3.0",
         "revolt/event-loop": "1.0.8",
-        "thesis/endian": "^0.3.0",
+        "thesis/endian": ">= 0.3.2",
         "thesis/googleapis-rpc-types": "^0.1.6",
         "thesis/package-version": "^0.1.2",
         "thesis/protobuf": "^0.1.8",

@@ -30,12 +30,12 @@ final readonly class Target
                 return match ($scheme) {
                     Scheme::Dns, Scheme::Passthrough => self::parseDns($addr, $target, $scheme),
                     Scheme::Ipv4, Scheme::Ipv6 => new self($scheme, self::parseAddresses($addr, $target)),
-                    Scheme::Unix => self::parseUnix($addr, $target),
+                    Scheme::Unix => new self($scheme, [self::parseUnix($addr, $target)]),
                 };
             }
         }
 
-        return self::parseHostPort($target);
+        return new self(Scheme::Dns, self::parseAddresses($target));
     }
 
     /**
@@ -54,7 +54,7 @@ final readonly class Target
      * @param non-empty-string $target
      * @throws InvalidTarget
      */
-    private static function parseDns(string $addr, string $target, Scheme $scheme = Scheme::Dns): self
+    private static function parseDns(string $addr, string $target, Scheme $scheme): self
     {
         $authority = null;
 
@@ -86,32 +86,9 @@ final readonly class Target
     /**
      * @param non-empty-string $addr
      * @param non-empty-string $target
-     * @return non-empty-list<TargetAddress>
      * @throws InvalidTarget
      */
-    private static function parseAddresses(string $addr, string $target): array
-    {
-        return array_map(
-            static fn(string $address) => self::parseAddress(trim($address), $target),
-            explode(',', $addr),
-        );
-    }
-
-    /**
-     * @param non-empty-string $target
-     * @throws InvalidTarget
-     */
-    private static function parseHostPort(string $target): self
-    {
-        return new self(Scheme::Dns, self::parseAddresses($target, $target));
-    }
-
-    /**
-     * @param non-empty-string $addr
-     * @param non-empty-string $target
-     * @throws InvalidTarget
-     */
-    private static function parseUnix(string $addr, string $target): self
+    private static function parseUnix(string $addr, string $target): TargetAddress
     {
         if (str_starts_with($addr, '//')) {
             $addr = substr($addr, 2);
@@ -121,7 +98,21 @@ final readonly class Target
             throw new InvalidTarget($target);
         }
 
-        return new self(Scheme::Unix, [new TargetAddress($addr, 0)]);
+        return new TargetAddress($addr, 0);
+    }
+
+    /**
+     * @param non-empty-string $addr
+     * @param ?non-empty-string $target
+     * @return non-empty-list<TargetAddress>
+     * @throws InvalidTarget
+     */
+    private static function parseAddresses(string $addr, ?string $target = null): array
+    {
+        return array_map(
+            static fn(string $address) => self::parseAddress(trim($address), $target ?? $addr),
+            explode(',', $addr),
+        );
     }
 
     /**
