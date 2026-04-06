@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Thesis\Grpc\Client\Resolver;
+namespace Thesis\Grpc\Client;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;

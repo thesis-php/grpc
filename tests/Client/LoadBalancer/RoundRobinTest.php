@@ -6,7 +6,6 @@ namespace Thesis\Grpc\Client\LoadBalancer;
 
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
-use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
 use Thesis\Grpc\Client\Address;
 use Thesis\Grpc\Client\Endpoint;

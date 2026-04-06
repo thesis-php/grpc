@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Thesis\Grpc\Client\Resolver;
+namespace Thesis\Grpc\Client;
 
 use Thesis\Grpc\GrpcException;
 
