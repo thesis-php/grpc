@@ -13,4 +13,5 @@ enum Scheme: string
     case Ipv4 = 'ipv4';
     case Ipv6 = 'ipv6';
     case Unix = 'unix';
+    case Passthrough = 'passthrough';
 }

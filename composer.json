@@ -19,7 +19,6 @@
     ],
     "require": {
         "php": "^8.4",
-        "ext-ctype": "*",
         "amphp/amp": "^3.1",
         "amphp/byte-stream": "^2.1",
         "amphp/http": "^2.1",
@@ -28,6 +27,7 @@
         "amphp/pipeline": "^1.2",
         "amphp/socket": "^2.3",
         "amphp/sync": "^2.3",
+        "league/uri": "^7.8",
         "psr/log": "^3.0",
         "revolt/event-loop": "1.0.8",
         "thesis/endian": "^0.3.0",

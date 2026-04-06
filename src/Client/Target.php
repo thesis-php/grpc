@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc\Client;
 
+use League\Uri\Uri;
+
 /**
  * @api
  * @see https://github.com/grpc/grpc/blob/master/doc/naming.md
@@ -26,8 +28,8 @@ final readonly class Target
                 }
 
                 return match ($scheme) {
-                    Scheme::Dns => self::parseDns($addr, $target),
-                    Scheme::Ipv4, Scheme::Ipv6 => self::parseAddressList($scheme, $addr, $target),
+                    Scheme::Dns, Scheme::Passthrough => self::parseDns($addr, $target, $scheme),
+                    Scheme::Ipv4, Scheme::Ipv6 => new self($scheme, self::parseAddresses($addr, $target)),
                     Scheme::Unix => self::parseUnix($addr, $target),
                 };
             }
@@ -38,7 +40,7 @@ final readonly class Target
 
     /**
      * @internal use {@see Target::parse()} instead
-     * @param non-empty-list<non-empty-string> $addresses
+     * @param non-empty-list<TargetAddress> $addresses
      * @param ?non-empty-string $authority DNS server address (only for dns://authority/host form)
      */
     public function __construct(
@@ -52,7 +54,7 @@ final readonly class Target
      * @param non-empty-string $target
      * @throws InvalidTarget
      */
-    private static function parseDns(string $addr, string $target): self
+    private static function parseDns(string $addr, string $target, Scheme $scheme = Scheme::Dns): self
     {
         $authority = null;
 
@@ -74,47 +76,34 @@ final readonly class Target
             }
         }
 
-        self::validateDnsEndpoint($addr, $target); // @phpstan-ignore staticMethod.alreadyNarrowedType
-
-        return new self(Scheme::Dns, [$addr], $authority);
+        return new self(
+            $scheme,
+            self::parseAddresses($addr, $target),
+            $authority,
+        );
     }
 
     /**
      * @param non-empty-string $addr
+     * @param non-empty-string $target
+     * @return non-empty-list<TargetAddress>
      * @throws InvalidTarget
      */
-    private static function parseAddressList(Scheme $scheme, string $addr, string $original): self
+    private static function parseAddresses(string $addr, string $target): array
     {
-        $addresses = explode(',', $addr);
-        $result = [];
-
-        foreach ($addresses as $address) {
-            $address = trim($address);
-
-            if ($address === '' || str_contains($address, ' ')) {
-                throw new InvalidTarget($original);
-            }
-
-            $result[] = $address;
-        }
-
-        return new self($scheme, $result);
+        return array_map(
+            static fn(string $address) => self::parseAddress(trim($address), $target),
+            explode(',', $addr),
+        );
     }
 
     /**
+     * @param non-empty-string $target
      * @throws InvalidTarget
      */
     private static function parseHostPort(string $target): self
     {
-        $colon = strpos($target, ':');
-
-        if ($colon !== false && !ctype_digit(substr($target, $colon + 1))) {
-            throw new InvalidTarget($target);
-        }
-
-        self::validateDnsEndpoint($target);
-
-        return new self(Scheme::Dns, [$target]);
+        return new self(Scheme::Dns, self::parseAddresses($target, $target));
     }
 
     /**
@@ -132,17 +121,29 @@ final readonly class Target
             throw new InvalidTarget($target);
         }
 
-        return new self(Scheme::Unix, [$addr]);
+        return new self(Scheme::Unix, [new TargetAddress($addr, 0)]);
     }
 
     /**
-     * @phpstan-assert non-empty-string $addr
+     * @param non-empty-string $target
      * @throws InvalidTarget
      */
-    private static function validateDnsEndpoint(string $addr, ?string $target = null): void
+    private static function parseAddress(string $addr, string $target): TargetAddress
     {
-        if ($addr === '' || str_contains($addr, '/') || str_contains($addr, ' ')) {
-            throw new InvalidTarget($target ?? $addr);
+        $uri = Uri::parse("tcp://{$addr}") ?? throw new InvalidTarget($target);
+
+        $host = $uri->getHost() ?? '';
+
+        if ($host === '') {
+            throw new InvalidTarget($target);
         }
+
+        $port = $uri->getPort() ?? 0;
+
+        if ($port < 1 || $port > 65_535 || $uri->getPath() !== '') {
+            throw new InvalidTarget($target);
+        }
+
+        return new TargetAddress($host, $port);
     }
 }

@@ -18,7 +18,7 @@ final readonly class Frame
     ) {}
 }
 
-const byteOrder = Endian\Order::big;
+const byteOrder = Endian\Order::Big;
 
 /**
  * @internal
