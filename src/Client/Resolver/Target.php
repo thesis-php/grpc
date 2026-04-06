@@ -28,6 +28,7 @@ final readonly class Target
                 return match ($scheme) {
                     Scheme::Dns => self::parseDns($addr, $target),
                     Scheme::Ipv4, Scheme::Ipv6 => self::parseAddressList($scheme, $addr, $target),
+                    Scheme::Unix => self::parseUnix($addr, $target),
                 };
             }
         }
@@ -37,7 +38,6 @@ final readonly class Target
 
     /**
      * @internal use {@see Target::parse()} instead
-     *
      * @param non-empty-list<non-empty-string> $addresses
      * @param ?non-empty-string $authority DNS server address (only for dns://authority/host form)
      */
@@ -115,6 +115,24 @@ final readonly class Target
         self::validateDnsEndpoint($target);
 
         return new self(Scheme::Dns, [$target]);
+    }
+
+    /**
+     * @param non-empty-string $addr
+     * @param non-empty-string $target
+     * @throws InvalidTarget
+     */
+    private static function parseUnix(string $addr, string $target): self
+    {
+        if (str_starts_with($addr, '//')) {
+            $addr = substr($addr, 2);
+        }
+
+        if ($addr === '' || $addr[0] !== '/') {
+            throw new InvalidTarget($target);
+        }
+
+        return new self(Scheme::Unix, [$addr]);
     }
 
     /**

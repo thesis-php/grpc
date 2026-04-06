@@ -105,6 +105,21 @@ final class TargetTest extends TestCase
             'localhost:50051',
             new Target(Scheme::Dns, ['localhost:50051']),
         ];
+
+        yield 'unix:///path' => [
+            'unix:///var/run/grpc.sock',
+            new Target(Scheme::Unix, ['/var/run/grpc.sock']),
+        ];
+
+        yield 'unix:/path' => [
+            'unix:/var/run/grpc.sock',
+            new Target(Scheme::Unix, ['/var/run/grpc.sock']),
+        ];
+
+        yield 'unix:///tmp/test.sock' => [
+            'unix:///tmp/test.sock',
+            new Target(Scheme::Unix, ['/tmp/test.sock']),
+        ];
     }
 
     /**
@@ -139,5 +154,8 @@ final class TargetTest extends TestCase
         yield 'dns: endpoint with spaces' => ['dns:my host'];
         yield 'bare host with spaces' => ['my host:50051'];
         yield 'bare bracketed ipv6 is invalid' => ['[::1]:50051'];
+        yield 'unix: no path' => ['unix:'];
+        yield 'unix: relative path' => ['unix:relative/path.sock'];
+        yield 'unix:// without absolute path' => ['unix://relative'];
     }
 }
