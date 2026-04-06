@@ -15,5 +15,5 @@ interface LoadBalancer
      */
     public function refresh(array $endpoints): void;
 
-    public function pick(): Endpoint;
+    public function pick(PickContext $context): Endpoint;
 }

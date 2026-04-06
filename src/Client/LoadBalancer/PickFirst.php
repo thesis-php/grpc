@@ -7,6 +7,7 @@ namespace Thesis\Grpc\Client\LoadBalancer;
 use Random\Randomizer;
 use Thesis\Grpc\Client\Endpoint;
 use Thesis\Grpc\Client\LoadBalancer;
+use Thesis\Grpc\Client\PickContext;
 
 /**
  * @api
@@ -32,7 +33,7 @@ final class PickFirst implements LoadBalancer
     }
 
     #[\Override]
-    public function pick(): Endpoint
+    public function pick(PickContext $context): Endpoint
     {
         return $this->current;
     }

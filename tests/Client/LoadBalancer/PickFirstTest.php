@@ -9,6 +9,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Thesis\Grpc\Client\Address;
 use Thesis\Grpc\Client\Endpoint;
+use Thesis\Grpc\Client\PickContext;
+use Thesis\Grpc\Metadata;
 
 #[CoversClass(PickFirst::class)]
 #[CoversClass(PickFirstFactory::class)]
@@ -21,10 +23,10 @@ final class PickFirstTest extends TestCase
     public function testPickAlwaysReturnsSameEndpoint(array $endpoints): void
     {
         $balancer = new PickFirstFactory()->create($endpoints);
-        $first = $balancer->pick();
+        $first = $balancer->pick(self::context());
 
         for ($i = 0; $i < 10; ++$i) {
-            self::assertTrue($first->equals($balancer->pick()));
+            self::assertTrue($first->equals($balancer->pick(self::context())));
         }
     }
 
@@ -54,11 +56,11 @@ final class PickFirstTest extends TestCase
     public function testRefreshKeepsPinnedEndpoint(array $initial, array $refreshed): void
     {
         $balancer = new PickFirstFactory()->create($initial);
-        $pinned = $balancer->pick();
+        $pinned = $balancer->pick(self::context());
 
         $balancer->refresh($refreshed);
 
-        self::assertTrue($pinned->equals($balancer->pick()));
+        self::assertTrue($pinned->equals($balancer->pick(self::context())));
     }
 
     /**
@@ -91,11 +93,11 @@ final class PickFirstTest extends TestCase
     public function testRefreshSwitchesPinnedEndpoint(array $initial, array $refreshed): void
     {
         $balancer = new PickFirstFactory()->create($initial);
-        $pinned = $balancer->pick();
+        $pinned = $balancer->pick(self::context());
 
         $balancer->refresh($refreshed);
 
-        self::assertFalse($pinned->equals($balancer->pick()));
+        self::assertFalse($pinned->equals($balancer->pick(self::context())));
     }
 
     /**
@@ -114,5 +116,10 @@ final class PickFirstTest extends TestCase
         yield 'completely different list' => [
             [$a, $b], [$c],
         ];
+    }
+
+    private static function context(): PickContext
+    {
+        return new PickContext('/test.Service/Method', new Metadata());
     }
 }

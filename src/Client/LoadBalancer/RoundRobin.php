@@ -6,6 +6,7 @@ namespace Thesis\Grpc\Client\LoadBalancer;
 
 use Thesis\Grpc\Client\Endpoint;
 use Thesis\Grpc\Client\LoadBalancer;
+use Thesis\Grpc\Client\PickContext;
 
 /**
  * @api
@@ -34,7 +35,7 @@ final class RoundRobin implements LoadBalancer
     }
 
     #[\Override]
-    public function pick(): Endpoint
+    public function pick(PickContext $context): Endpoint
     {
         return $this->endpoints[$this->cursor++ % $this->count]; // @phpstan-ignore offsetAccess.notFound
     }

@@ -9,6 +9,8 @@ use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Thesis\Grpc\Client\Address;
 use Thesis\Grpc\Client\Endpoint;
+use Thesis\Grpc\Client\PickContext;
+use Thesis\Grpc\Metadata;
 
 #[CoversClass(RoundRobin::class)]
 #[CoversClass(RoundRobinFactory::class)]
@@ -24,7 +26,7 @@ final class RoundRobinTest extends TestCase
         $balancer = new RoundRobinFactory()->create($endpoints);
 
         foreach ($expectedPicks as $expected) {
-            self::assertTrue($expected->equals($balancer->pick()));
+            self::assertTrue($expected->equals($balancer->pick(self::context())));
         }
     }
 
@@ -64,13 +66,13 @@ final class RoundRobinTest extends TestCase
         $balancer = new RoundRobinFactory()->create($initial);
 
         for ($i = 0; $i < $picksBeforeRefresh; ++$i) {
-            $balancer->pick();
+            $balancer->pick(self::context());
         }
 
         $balancer->refresh($refreshed);
 
         foreach ($expectedAfterRefresh as $expected) {
-            self::assertTrue($expected->equals($balancer->pick()));
+            self::assertTrue($expected->equals($balancer->pick(self::context())));
         }
     }
 
@@ -100,5 +102,10 @@ final class RoundRobinTest extends TestCase
             [$a, $b, $c],
             [$a, $b, $c],
         ];
+    }
+
+    private static function context(): PickContext
+    {
+        return new PickContext('/test.Service/Method', new Metadata());
     }
 }
