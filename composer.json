@@ -21,6 +21,8 @@
         "php": "^8.4",
         "amphp/amp": "^3.1",
         "amphp/byte-stream": "^2.1",
+        "amphp/cache": "^2.0",
+        "amphp/dns": "^2.4",
         "amphp/http": "^2.1",
         "amphp/http-client": "^5.3",
         "amphp/http-server": "^3.4",
