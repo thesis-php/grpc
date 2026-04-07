@@ -121,6 +121,7 @@ final readonly class Target
      */
     private static function parseAddress(string $addr, string $target): TargetAddress
     {
+        $addr = urldecode($addr);
         $uri = Uri::parse("tcp://{$addr}") ?? throw new InvalidTarget($target);
 
         $host = $uri->getHost() ?? '';

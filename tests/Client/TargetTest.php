@@ -46,6 +46,16 @@ final class TargetTest extends TestCase
             new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], 'authority'),
         ];
 
+        yield 'dns:///ipv6 with brackets' => [
+            'dns:///[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
+            new Target(Scheme::Dns, [new TargetAddress('[2001:db8:85a3:8d3:1319:8a2e:370:7348]', 443)]),
+        ];
+
+        yield 'dns:///ipv6 percent-encoded brackets' => [
+            'dns:///%5B2001:db8:85a3:8d3:1319:8a2e:370:7348%5D:443',
+            new Target(Scheme::Dns, [new TargetAddress('[2001:db8:85a3:8d3:1319:8a2e:370:7348]', 443)]),
+        ];
+
         yield 'ipv4:single address' => [
             'ipv4:192.168.0.1:50051',
             new Target(Scheme::Ipv4, [new TargetAddress('192.168.0.1', 50_051)]),
