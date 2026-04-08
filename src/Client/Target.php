@@ -28,24 +28,27 @@ final readonly class Target
                 }
 
                 return match ($scheme) {
-                    Scheme::Dns, Scheme::Passthrough => self::parseDns($addr, $target, $scheme),
-                    Scheme::Ipv4, Scheme::Ipv6 => new self($scheme, self::parseAddresses($addr, $target)),
-                    Scheme::Unix => new self($scheme, [self::parseUnix($addr, $target)]),
+                    Scheme::Dns => self::parseDns($addr, $target, $scheme),
+                    Scheme::Passthrough => self::parsePassthrough($addr, $target),
+                    Scheme::Ipv4, Scheme::Ipv6 => new self($scheme, self::parseAddresses($addr, $target), opaque: $addr),
+                    Scheme::Unix => new self($scheme, [self::parseUnix($addr, $target)], opaque: $addr),
                 };
             }
         }
 
-        return new self(Scheme::Dns, self::parseAddresses($target));
+        return new self(Scheme::Dns, self::parseAddresses($target), opaque: $target);
     }
 
     /**
      * @internal use {@see Target::parse()} instead
      * @param non-empty-list<TargetAddress> $addresses
+     * @param non-empty-string $opaque Raw value after scheme prefix
      * @param ?non-empty-string $authority DNS server address (only for dns://authority/host form)
      */
     public function __construct(
         public Scheme $scheme,
         public array $addresses,
+        public string $opaque,
         public ?string $authority = null,
     ) {}
 
@@ -56,6 +59,7 @@ final readonly class Target
      */
     private static function parseDns(string $addr, string $target, Scheme $scheme): self
     {
+        $opaque = $addr;
         $authority = null;
 
         if (str_starts_with($addr, '//')) {
@@ -79,8 +83,34 @@ final readonly class Target
         return new self(
             $scheme,
             self::parseAddresses($addr, $target),
+            $opaque,
             $authority,
         );
+    }
+
+    /**
+     * @param non-empty-string $addr
+     * @param non-empty-string $target
+     * @throws InvalidTarget
+     */
+    private static function parsePassthrough(string $addr, string $target): self
+    {
+        if (!str_starts_with($addr, '//')) {
+            throw new InvalidTarget($target);
+        }
+
+        $slash = strpos($addr, '/', 2);
+        if ($slash === false) {
+            throw new InvalidTarget($target);
+        }
+
+        $addr = substr($addr, $slash + 1);
+
+        if ($addr === '') {
+            throw new InvalidTarget($target);
+        }
+
+        return new self(Scheme::Passthrough, [new TargetAddress($addr, 0)], $addr);
     }
 
     /**

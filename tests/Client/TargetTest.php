@@ -28,37 +28,37 @@ final class TargetTest extends TestCase
     {
         yield 'dns:host:port' => [
             'dns:myhost:50051',
-            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)]),
+            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], 'myhost:50051'),
         ];
 
         yield 'dns:///host:port' => [
             'dns:///myhost:50051',
-            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)]),
+            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], '///myhost:50051'),
         ];
 
         yield 'dns://authority/host:port' => [
             'dns://authority:53/myhost:50051',
-            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], 'authority:53'),
+            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], '//authority:53/myhost:50051', 'authority:53'),
         ];
 
         yield 'dns://authority/host:port without authority port' => [
             'dns://authority/myhost:50051',
-            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], 'authority'),
+            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], '//authority/myhost:50051', 'authority'),
         ];
 
         yield 'dns:///ipv6 with brackets' => [
             'dns:///[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443',
-            new Target(Scheme::Dns, [new TargetAddress('[2001:db8:85a3:8d3:1319:8a2e:370:7348]', 443)]),
+            new Target(Scheme::Dns, [new TargetAddress('[2001:db8:85a3:8d3:1319:8a2e:370:7348]', 443)], '///[2001:db8:85a3:8d3:1319:8a2e:370:7348]:443'),
         ];
 
         yield 'dns:///ipv6 percent-encoded brackets' => [
             'dns:///%5B2001:db8:85a3:8d3:1319:8a2e:370:7348%5D:443',
-            new Target(Scheme::Dns, [new TargetAddress('[2001:db8:85a3:8d3:1319:8a2e:370:7348]', 443)]),
+            new Target(Scheme::Dns, [new TargetAddress('[2001:db8:85a3:8d3:1319:8a2e:370:7348]', 443)], '///%5B2001:db8:85a3:8d3:1319:8a2e:370:7348%5D:443'),
         ];
 
         yield 'ipv4:single address' => [
             'ipv4:192.168.0.1:50051',
-            new Target(Scheme::Ipv4, [new TargetAddress('192.168.0.1', 50_051)]),
+            new Target(Scheme::Ipv4, [new TargetAddress('192.168.0.1', 50_051)], '192.168.0.1:50051'),
         ];
 
         yield 'ipv4:multiple addresses' => [
@@ -66,7 +66,7 @@ final class TargetTest extends TestCase
             new Target(Scheme::Ipv4, [
                 new TargetAddress('192.168.0.1', 50_051),
                 new TargetAddress('192.168.0.2', 50_052),
-            ]),
+            ], '192.168.0.1:50051,192.168.0.2:50052'),
         ];
 
         yield 'ipv4:multiple addresses with spaces around comma' => [
@@ -74,12 +74,12 @@ final class TargetTest extends TestCase
             new Target(Scheme::Ipv4, [
                 new TargetAddress('192.168.0.1', 50_051),
                 new TargetAddress('192.168.0.2', 50_052),
-            ]),
+            ], '192.168.0.1:50051, 192.168.0.2:50052'),
         ];
 
         yield 'ipv6:single address with port' => [
             'ipv6:[::1]:50051',
-            new Target(Scheme::Ipv6, [new TargetAddress('[::1]', 50_051)]),
+            new Target(Scheme::Ipv6, [new TargetAddress('[::1]', 50_051)], '[::1]:50051'),
         ];
 
         yield 'ipv6:multiple addresses' => [
@@ -87,47 +87,42 @@ final class TargetTest extends TestCase
             new Target(Scheme::Ipv6, [
                 new TargetAddress('[::1]', 50_051),
                 new TargetAddress('[::2]', 50_052),
-            ]),
+            ], '[::1]:50051,[::2]:50052'),
         ];
 
         yield 'bare host:port' => [
             'myhost:50051',
-            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)]),
+            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], 'myhost:50051'),
         ];
 
         yield 'bare localhost:port' => [
             'localhost:50051',
-            new Target(Scheme::Dns, [new TargetAddress('localhost', 50_051)]),
+            new Target(Scheme::Dns, [new TargetAddress('localhost', 50_051)], 'localhost:50051'),
         ];
 
         yield 'unix:///path' => [
             'unix:///var/run/grpc.sock',
-            new Target(Scheme::Unix, [new TargetAddress('/var/run/grpc.sock', 0)]),
+            new Target(Scheme::Unix, [new TargetAddress('/var/run/grpc.sock', 0)], '///var/run/grpc.sock'),
         ];
 
         yield 'unix:/path' => [
             'unix:/var/run/grpc.sock',
-            new Target(Scheme::Unix, [new TargetAddress('/var/run/grpc.sock', 0)]),
+            new Target(Scheme::Unix, [new TargetAddress('/var/run/grpc.sock', 0)], '/var/run/grpc.sock'),
         ];
 
         yield 'unix:///tmp/test.sock' => [
             'unix:///tmp/test.sock',
-            new Target(Scheme::Unix, [new TargetAddress('/tmp/test.sock', 0)]),
+            new Target(Scheme::Unix, [new TargetAddress('/tmp/test.sock', 0)], '///tmp/test.sock'),
         ];
 
         yield 'passthrough:///host:port' => [
             'passthrough:///myhost:50051',
-            new Target(Scheme::Passthrough, [new TargetAddress('myhost', 50_051)]),
-        ];
-
-        yield 'passthrough:host:port' => [
-            'passthrough:myhost:50051',
-            new Target(Scheme::Passthrough, [new TargetAddress('myhost', 50_051)]),
+            new Target(Scheme::Passthrough, [new TargetAddress('myhost:50051', 0)], 'myhost:50051'),
         ];
 
         yield 'bare bracketed ipv6' => [
             '[::1]:50051',
-            new Target(Scheme::Dns, [new TargetAddress('[::1]', 50_051)]),
+            new Target(Scheme::Dns, [new TargetAddress('[::1]', 50_051)], '[::1]:50051'),
         ];
     }
 
@@ -173,6 +168,7 @@ final class TargetTest extends TestCase
         yield 'ipv6: address without port' => ['ipv6:::1'];
         yield 'ipv6: bracketed without port' => ['ipv6:[::1]'];
         yield 'bare host without port' => ['myhost'];
+        yield 'passthrough: without slashes' => ['passthrough:myhost:50051'];
         yield 'passthrough: host without port' => ['passthrough:myhost'];
         yield 'port out of range' => ['dns:myhost:99999'];
     }
