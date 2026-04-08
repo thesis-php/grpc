@@ -12,6 +12,7 @@ composer require thesis/grpc
 - [Implementing the Server](#implementing-the-server)
 - [Starting the Server](#starting-the-server)
 - [Using the Client](#using-the-client)
+- [TLS and mTLS](#tls-and-mtls)
 - [Target Addressing](#target-addressing)
 - [Load Balancing](#load-balancing)
 - [Endpoint Resolution](#endpoint-resolution)
@@ -170,6 +171,67 @@ $client = new AuthenticationServiceClient(
         ->build(),
 );
 ```
+
+### TLS and mTLS
+
+The library supports both standard TLS (server authentication) and mTLS (mutual client/server authentication) via `TransportCredentials` on both the server and client sides.
+
+For TLS, the server needs a certificate and private key, while the client needs a trusted CA and the expected server name:
+
+```php
+use Amp\Socket\Certificate;
+use Thesis\Grpc\Client;
+use Thesis\Grpc\Server;
+
+$server = new Server\Builder()
+    ->withTransportCredentials(
+        new Server\TransportCredentials()
+            ->withDefaultCertificate(new Certificate('/certs/server.crt', '/certs/server.key')),
+    )
+    ->build();
+
+$client = new Client\Builder()
+    ->withTransportCredentials(
+        new Client\TransportCredentials()
+            ->withCaCert('/certs/ca.crt')
+            ->withPeerName('localhost'),
+    )
+    ->build();
+```
+
+For mTLS, additionally enable client verification on the server and provide a client certificate on the client side:
+
+```php
+use Amp\Socket\Certificate;
+use Thesis\Grpc\Client;
+use Thesis\Grpc\Server;
+
+$server = new Server\Builder()
+    ->withTransportCredentials(
+        new Server\TransportCredentials()
+            ->withDefaultCertificate(new Certificate('/certs/server.crt', '/certs/server.key'))
+            ->withCaCert('/certs/ca.crt')
+            ->withPeerName('client')
+            ->withVerifyPeer(),
+    )
+    ->build();
+
+$client = new Client\Builder()
+    ->withHost('ipv4:127.0.0.1:50051')
+    ->withTransportCredentials(
+        new Client\TransportCredentials()
+            ->withCaCert('/certs/ca.crt')
+            ->withPeerName('localhost')
+            ->withCertificate(new Certificate('/certs/client.crt', '/certs/client.key')),
+    )
+    ->build();
+```
+
+Practical recommendations:
+
+- Make sure the server certificate includes SAN entries (`DNS`/`IP`) matching the value passed to `withPeerName()` on the client.
+- For mTLS, the client certificate should include the proper extension (`extendedKeyUsage=clientAuth`), and the server certificate should include `extendedKeyUsage=serverAuth`.
+- Use certificates signed by a trusted CA and modern signature algorithms (for example, SHA-256).
 
 ### Target Addressing
 
