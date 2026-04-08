@@ -41,7 +41,7 @@ final class StaticResolverTest extends TestCase
     public static function provideResolveCases(): iterable
     {
         yield 'ipv4: single address' => [
-            new Target(Scheme::Ipv4, [new TargetAddress('192.168.0.1', 50_051)]),
+            new Target(Scheme::Ipv4, [new TargetAddress('192.168.0.1', 50_051)], '192.168.0.1:50051'),
             [new Endpoint(new Address('192.168.0.1:50051'))],
         ];
 
@@ -49,7 +49,7 @@ final class StaticResolverTest extends TestCase
             new Target(Scheme::Ipv4, [
                 new TargetAddress('192.168.0.1', 50_051),
                 new TargetAddress('192.168.0.2', 50_052),
-            ]),
+            ], '192.168.0.1:50051,192.168.0.2:50052'),
             [
                 new Endpoint(new Address('192.168.0.1:50051')),
                 new Endpoint(new Address('192.168.0.2:50052')),
@@ -57,12 +57,12 @@ final class StaticResolverTest extends TestCase
         ];
 
         yield 'ipv6: single address' => [
-            new Target(Scheme::Ipv6, [new TargetAddress('[::1]', 50_051)]),
+            new Target(Scheme::Ipv6, [new TargetAddress('[::1]', 50_051)], '[::1]:50051'),
             [new Endpoint(new Address('[::1]:50051'))],
         ];
 
         yield 'unix: socket path' => [
-            new Target(Scheme::Unix, [new TargetAddress('/var/run/grpc.sock', 0)]),
+            new Target(Scheme::Unix, [new TargetAddress('/var/run/grpc.sock', 0)], '///var/run/grpc.sock'),
             [new Endpoint(new Address('/var/run/grpc.sock'))],
         ];
     }

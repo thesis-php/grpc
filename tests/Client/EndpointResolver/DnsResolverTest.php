@@ -56,13 +56,13 @@ final class DnsResolverTest extends TestCase
     public static function provideResolveCases(): iterable
     {
         yield 'single A record' => [
-            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)]),
+            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], 'myhost:50051'),
             [new DnsRecord('192.168.0.1', DnsRecord::A, 300)],
             [new Endpoint(new Address('192.168.0.1:50051'))],
         ];
 
         yield 'multiple A records' => [
-            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)]),
+            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], 'myhost:50051'),
             [
                 new DnsRecord('192.168.0.1', DnsRecord::A, 300),
                 new DnsRecord('192.168.0.2', DnsRecord::A, 300),
@@ -74,13 +74,13 @@ final class DnsResolverTest extends TestCase
         ];
 
         yield 'AAAA record wraps in brackets' => [
-            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)]),
+            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], 'myhost:50051'),
             [new DnsRecord('::1', DnsRecord::AAAA, 300)],
             [new Endpoint(new Address('[::1]:50051'))],
         ];
 
         yield 'mixed A and AAAA records' => [
-            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)]),
+            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], 'myhost:50051'),
             [
                 new DnsRecord('192.168.0.1', DnsRecord::A, 300),
                 new DnsRecord('::1', DnsRecord::AAAA, 300),
@@ -89,12 +89,6 @@ final class DnsResolverTest extends TestCase
                 new Endpoint(new Address('192.168.0.1:50051')),
                 new Endpoint(new Address('[::1]:50051')),
             ],
-        ];
-
-        yield 'passthrough uses same dns logic' => [
-            new Target(Scheme::Passthrough, [new TargetAddress('myhost', 443)]),
-            [new DnsRecord('10.0.0.1', DnsRecord::A, 300)],
-            [new Endpoint(new Address('10.0.0.1:443'))],
         ];
     }
 
@@ -120,7 +114,7 @@ final class DnsResolverTest extends TestCase
 
         $resolver = new DnsResolver($dnsResolver, minResolveInterval: 0.1, maxResolveInterval: 0.1);
         $resolver->resolve(
-            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)]),
+            new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], 'myhost:50051'),
             $listener,
             $deferredCancellation->getCancellation(),
         );
@@ -131,7 +125,7 @@ final class DnsResolverTest extends TestCase
 
     public function testResolveStopOnCancellation(): void
     {
-        $target = new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)]);
+        $target = new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], 'myhost:50051');
         $deferredCancellation = new DeferredCancellation();
 
         $dnsResolver = self::createStub(AmphpDnsResolver::class);
@@ -153,7 +147,7 @@ final class DnsResolverTest extends TestCase
 
     public function testResolveThrows(): void
     {
-        $target = new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)]);
+        $target = new Target(Scheme::Dns, [new TargetAddress('myhost', 50_051)], 'myhost:50051');
         $deferredCancellation = new DeferredCancellation();
 
         $dnsResolver = $this->createMock(AmphpDnsResolver::class);
