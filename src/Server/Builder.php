@@ -367,7 +367,7 @@ final class Builder
         }
 
         $bindContext = new BindContext()
-            ->withTlsContext($this->credentials?->createServerContext());
+            ->withTlsContext($this->credentials?->createContext());
 
         foreach ($addresses as $address) {
             $server->expose($address, $bindContext);

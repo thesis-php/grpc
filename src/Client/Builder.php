@@ -185,7 +185,8 @@ final class Builder
         $compressor = $this->compressor ?? IdentityCompressor::Compressor;
         $protobuf = $this->protobuf ?? Decoder\Builder::buildDefault();
         $loadBalancerFactory = $this->loadBalancerFactory ?? new LoadBalancer\PickFirstFactory();
-        $uriFactory = new Http2\UriFactory($this->credentials !== null ? Internal\HttpScheme::Https : Internal\HttpScheme::Http);
+        $tlsContext = $this->credentials?->createContext();
+        $uriFactory = new Http2\UriFactory($tlsContext !== null ? Internal\HttpScheme::Https : Internal\HttpScheme::Http);
 
         $resolver = $this->endpointResolvers[$target->scheme] ?? match ($target->scheme) {
             Scheme::Dns => new EndpointResolver\DnsResolver(),
@@ -208,7 +209,7 @@ final class Builder
                     $this->connector,
                     new ConnectContext()
                         ->withConnectTimeout($this->connectTimeout)
-                        ->withTlsContext($this->credentials?->createClientContext()),
+                        ->withTlsContext($tlsContext),
                 ),
             ))
             ->skipDefaultUserAgent()
