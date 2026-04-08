@@ -40,4 +40,6 @@ interface Client
         Metadata $md = new Metadata(),
         Cancellation $cancellation = new NullCancellation(),
     ): ClientStream;
+
+    public function close(): void;
 }
