@@ -11,6 +11,8 @@ use Amp\Http\Client\HttpClientBuilder;
 use Amp\Socket\ConnectContext;
 use Amp\Socket\SocketConnector;
 use Thesis\Grpc\Client;
+use Thesis\Grpc\Client\Internal\Connection;
+use Thesis\Grpc\Client\Internal\Http2;
 use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Compression\IdentityCompressor;
 use Thesis\Grpc\Encoding\Encoder;
@@ -22,7 +24,7 @@ use Thesis\Protobuf\Decoder;
  */
 final class Builder
 {
-    private const string DEFAULT_HOST = 'http://localhost:50051';
+    private const string DEFAULT_HOST = '127.0.0.1:50051';
     private const float DEFAULT_CONNECT_TIMEOUT = 10;
     private const int DEFAULT_CONNECTION_LIMIT = \PHP_INT_MAX;
 
@@ -51,6 +53,16 @@ final class Builder
      * Required for decoding the `grpc-status-details-bin` header, `status`, and `details`.
      */
     private ?Decoder $protobuf = null;
+
+    private ?LoadBalancerFactory $loadBalancerFactory = null;
+
+    /** @var \SplObjectStorage<Scheme, EndpointResolver> */
+    private \SplObjectStorage $endpointResolvers;
+
+    public function __construct()
+    {
+        $this->endpointResolvers = new \SplObjectStorage();
+    }
 
     public function withProtobuf(Decoder $decoder): self
     {
@@ -144,6 +156,22 @@ final class Builder
         return $builder;
     }
 
+    public function withLoadBalancer(LoadBalancerFactory $factory): self
+    {
+        $builder = clone $this;
+        $builder->loadBalancerFactory = $factory;
+
+        return $builder;
+    }
+
+    public function withEndpointResolver(Scheme $scheme, EndpointResolver $resolver): self
+    {
+        $builder = clone $this;
+        $builder->endpointResolvers[$scheme] = $resolver;
+
+        return $builder;
+    }
+
     public static function buildDefault(): Client
     {
         return new self()->build();
@@ -151,26 +179,59 @@ final class Builder
 
     public function build(): Client
     {
+        $target = Target::parse($this->host ?? self::DEFAULT_HOST);
+
+        $encoder = $this->encoder ?? ProtobufEncoder::default();
+        $compressor = $this->compressor ?? IdentityCompressor::Compressor;
+        $protobuf = $this->protobuf ?? Decoder\Builder::buildDefault();
+        $loadBalancerFactory = $this->loadBalancerFactory ?? new LoadBalancer\PickFirstFactory();
+        $uriFactory = new Http2\UriFactory($this->credentials !== null ? Internal\HttpScheme::Https : Internal\HttpScheme::Http);
+
+        $resolver = $this->endpointResolvers[$target->scheme] ?? match ($target->scheme) {
+            Scheme::Dns => new EndpointResolver\DnsResolver(),
+            Scheme::Passthrough => new EndpointResolver\PassthroughResolver(),
+            Scheme::Ipv4, Scheme::Ipv6, Scheme::Unix => new EndpointResolver\StaticResolver(),
+        };
+
+        $interceptor = new Http2\InterceptorComposer([
+            ...$this->interceptors,
+            new Http2\AppendControlMetadataInterceptor(
+                $encoder->name(),
+                $compressor->name(),
+            ),
+        ]);
+
+        $httpclient = $this->httpclient ?? new HttpClientBuilder()
+            ->usingPool(ConnectionLimitingPool::byAuthority(
+                $this->connectionLimit,
+                new DefaultConnectionFactory(
+                    $this->connector,
+                    new ConnectContext()
+                        ->withConnectTimeout($this->connectTimeout)
+                        ->withTlsContext($this->credentials?->createClientContext()),
+                ),
+            ))
+            ->skipDefaultUserAgent()
+            ->skipAutomaticCompression()
+            ->skipDefaultAcceptHeader()
+            ->build();
+
         return new Internal\AmphpHttpClient(
-            host: $this->host ?? self::DEFAULT_HOST,
-            client: $this->httpclient ?? new HttpClientBuilder()
-                ->usingPool(ConnectionLimitingPool::byAuthority(
-                    $this->connectionLimit,
-                    new DefaultConnectionFactory(
-                        $this->connector,
-                        new ConnectContext()
-                            ->withConnectTimeout($this->connectTimeout)
-                            ->withTlsContext($this->credentials?->createClientContext()),
+            new Connection\LazyConnection(
+                static fn() => new Connection\DefaultConnection(
+                    target: $target,
+                    resolver: $resolver,
+                    loadBalancerFactory: $loadBalancerFactory,
+                    interceptor: $interceptor,
+                    streams: new Http2\StreamFactory(
+                        http: $httpclient,
+                        uri: $uriFactory,
+                        errors: new Http2\ErrorHandler($protobuf),
+                        encoder: $encoder,
+                        compressor: $compressor,
                     ),
-                ))
-                ->skipDefaultUserAgent()
-                ->skipAutomaticCompression()
-                ->skipDefaultAcceptHeader()
-                ->build(),
-            encoder: $this->encoder ?? ProtobufEncoder::default(),
-            compressor: $this->compressor ?? IdentityCompressor::Compressor,
-            protobuf: $this->protobuf ?? Decoder\Builder::buildDefault(),
-            interceptors: $this->interceptors,
+                ),
+            ),
         );
     }
 }

@@ -14,6 +14,7 @@ use Amp\Http\Client\Response;
 use Amp\Http\Client\StreamedContent;
 use Amp\NullCancellation;
 use Amp\Pipeline;
+use Thesis\Grpc\Client\Address;
 use Thesis\Grpc\Client\Invoke;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Compression\Compressor;
@@ -50,6 +51,7 @@ final readonly class StreamFactory
      */
     public function create(
         Invoke $invoke,
+        Address $address,
         Metadata $md = new Metadata(),
         Cancellation $cancellation = new NullCancellation(),
     ): ClientStream {
@@ -60,7 +62,7 @@ final readonly class StreamFactory
         $deferred = new DeferredFuture();
 
         $request = new Request(
-            uri: $this->uri->create($invoke->method),
+            uri: $this->uri->create($address, $invoke),
             method: 'POST',
             body: StreamedContent::fromStream(
                 new ReadableIterableStream($this->codec->encode($send->iterate(), $cancellation)),

@@ -52,7 +52,7 @@ final class GracefulShutdownTest extends TestCase
         $this->server->stop();
         $failFuture = async($client->echo(...), new EchoRequest('Hello, gRPC'));
         self::assertEquals(new EchoResponse('Hello, gRPC'), $successFuture->await());
-        $this->expectExceptionMessage("Connection to 'localhost:50051' failed");
+        $this->expectExceptionMessage("Connection to '127.0.0.1:50051' failed");
         $failFuture->await();
     }
 }

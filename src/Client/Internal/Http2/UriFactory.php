@@ -4,26 +4,24 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc\Client\Internal\Http2;
 
+use Thesis\Grpc\Client\Address;
+use Thesis\Grpc\Client\Internal\HttpScheme;
+use Thesis\Grpc\Client\Invoke;
+
 /**
  * @internal
  */
 final readonly class UriFactory
 {
-    /**
-     * @param non-empty-string $host
-     */
     public function __construct(
-        private string $host,
+        private HttpScheme $scheme,
     ) {}
 
     /**
-     * @param non-empty-string $method
      * @return non-empty-string
      */
-    public function create(string $method): string
+    public function create(Address $address, Invoke $invoke): string
     {
-        $clear = static fn(string $path) => trim($path, '/');
-
-        return \sprintf('%s/%s', $clear($this->host), $clear($method));
+        return \sprintf('%s://%s/%s', $this->scheme->value, $address->value, ltrim($invoke->method, '/'));
     }
 }

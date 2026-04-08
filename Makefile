@@ -135,6 +135,7 @@ check: fixer-check rector-check composer-validate composer-normalize-check deps-
 
 compile-test-stub:
 	docker run --rm \
+		--pull always \
 	    --user $(CONTAINER_USER) \
         -v $(PWD):/workspace \
         -w /workspace \
