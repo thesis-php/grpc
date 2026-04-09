@@ -27,7 +27,6 @@ const byteOrder = Endian\Order::Big;
 function encodeFrame(Frame $frame): string
 {
     return byteOrder->packInt8((int) $frame->compressed)
-        /** @phpstan-ignore argument.type */
         . byteOrder->packUint32(\strlen($frame->buffer))
         . $frame->buffer;
 }
