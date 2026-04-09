@@ -52,8 +52,8 @@ final readonly class AmphpHttpClient implements Client
     }
 
     #[\Override]
-    public function close(): void
+    public function close(Cancellation $cancellation = new NullCancellation()): void
     {
-        $this->connection->close();
+        $this->connection->close($cancellation);
     }
 }

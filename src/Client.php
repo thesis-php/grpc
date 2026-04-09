@@ -41,5 +41,5 @@ interface Client
         Cancellation $cancellation = new NullCancellation(),
     ): ClientStream;
 
-    public function close(): void;
+    public function close(Cancellation $cancellation = new NullCancellation()): void;
 }

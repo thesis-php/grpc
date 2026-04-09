@@ -24,6 +24,7 @@ composer require thesis/grpc
 - [Server streaming](#server-streaming)
 - [Bidirectional streaming](#bidirectional-streaming)
 - [Graceful Shutdown](#graceful-shutdown)
+- [Closing the Client](#closing-the-client)
 
 ---
 
@@ -973,3 +974,24 @@ $server->stop(new TimeoutCancellation(30));
 
 During shutdown, the server notifies all active handlers via the `Cancellation` argument passed to each handler method.
 This means your handler implementations should check cancellation and avoid ignoring the `$cancellation` argument — otherwise the server will have no way to signal them to stop, and shutdown will block until they finish on their own.
+
+### Closing the Client
+
+When using endpoint resolvers such as `DnsResolver`, the client maintains background processes that periodically re-resolve addresses to keep the endpoint list up to date.
+These processes will continue running for as long as the client is alive. To stop them and release all associated resources, you must call `Client::close()`:
+
+```php
+$client = new Client\Builder()
+    ->withHost('dns:///my-grpc-server:8080')
+    ->build();
+
+$auth = new AuthenticationServiceClient($client);
+
+try {
+    $response = $auth->authenticate(new AuthenticateRequest('root', 'secret'));
+} finally {
+    $client->close();
+}
+```
+
+If `close()` is not called, the resolver will continue running in the background indefinitely, preventing the event loop from exiting naturally.
