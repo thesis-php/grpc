@@ -66,6 +66,22 @@ jobs:
             git push "https://x-access-token:${TOKEN}@github.com/${remote_repo}.git" "${split_sha}:refs/tags/${tag}" --force
           }
 
+          create_release_if_missing() {
+            local remote_repo="$1"
+            export GH_TOKEN="${TOKEN}"
+
+            if gh release view "${REF_NAME}" --repo "${remote_repo}" >/dev/null 2>&1; then
+              echo "Release ${REF_NAME} already exists in ${remote_repo}"
+              return 0
+            fi
+
+            gh release create "${REF_NAME}" \
+              --repo "${remote_repo}" \
+              --title "${REF_NAME}" \
+              --generate-notes \
+              --verify-tag
+          }
+
           if [ "${REF_TYPE}" = "branch" ]; then
             if [[ ! "${REF_NAME}" =~ ^[0-9]+\.[0-9]+\.x$ ]]; then
               echo "Skip branch ${REF_NAME}: not a release line branch (X.Y.x)."
@@ -87,6 +103,10 @@ jobs:
             split_and_push_tag "packages/grpc" "thesis-php/grpc-protocol" "${REF_NAME}"
             split_and_push_tag "packages/client" "thesis-php/grpc-client" "${REF_NAME}"
             split_and_push_tag "packages/server" "thesis-php/grpc-server" "${REF_NAME}"
+
+            create_release_if_missing "thesis-php/grpc-protocol"
+            create_release_if_missing "thesis-php/grpc-client"
+            create_release_if_missing "thesis-php/grpc-server"
             exit 0
           fi
 
