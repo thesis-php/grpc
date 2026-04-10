@@ -18,6 +18,6 @@ enum UserAgent implements MetadataKey
     #[\Override]
     public function append(Metadata $md): Metadata
     {
-        return $md->replace(self::HEADER, 'grpc-php-thesis/' . Package\version('thesis/grpc'));
+        return $md->replace(self::HEADER, 'grpc-php-thesis/' . Package\version('thesis/grpc-client'));
     }
 }
