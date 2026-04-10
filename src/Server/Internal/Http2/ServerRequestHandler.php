@@ -116,7 +116,7 @@ final class ServerRequestHandler implements
 
         /** @var array<non-empty-string, StreamFactory> $streams */
         static $streams = [];
-        $factory = $streams["{$encoder->name()}{$compressor->name()}"] ??= new StreamFactory(
+        $factory = $streams["{$encoder->name()}\0{$compressor->name()}"] ??= new StreamFactory(
             $encoder,
             $compressor,
         );
