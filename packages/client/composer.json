@@ -1,0 +1,38 @@
+{
+    "name": "thesis/grpc-client",
+    "description": "Async gRPC client for PHP with HTTP/2 transport, streaming RPCs, interceptors, TLS/mTLS, and client-side load balancing.",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "kafkiansky",
+            "email": "vadimzanfir@gmail.com"
+        },
+        {
+            "name": "Valentin Udaltsov",
+            "email": "udaltsov.valentin@gmail.com"
+        },
+        {
+            "name": "Thesis Team",
+            "homepage": "https://github.com/orgs/thesis-php/people"
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "amphp/cache": "^2.0",
+        "amphp/dns": "^2.4",
+        "amphp/http-client": "^5.3",
+        "amphp/socket": "^2.3",
+        "league/uri": "^7.8",
+        "thesis/grpc-protocol": "^0.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Thesis\\Grpc\\": "src/"
+        }
+    },
+    "config": {
+        "lock": false,
+        "sort-packages": true
+    }
+}

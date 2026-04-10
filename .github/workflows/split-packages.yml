@@ -1,0 +1,90 @@
+name: Split Packages
+
+permissions:
+  contents: read
+
+on:
+  push:
+    branches:
+      - '**'
+    tags:
+      - '*.*.*'
+
+concurrency:
+  group: split-packages-${{ github.ref_type }}-${{ github.ref_name }}
+  cancel-in-progress: true
+
+jobs:
+  split:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Configure git
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Split and push
+        env:
+          TOKEN: ${{ secrets.SPLIT_REPOS_TOKEN }}
+          REF_NAME: ${{ github.ref_name }}
+          REF_TYPE: ${{ github.ref_type }}
+          SHA: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+
+          if [ -z "${TOKEN}" ]; then
+            echo "SPLIT_REPOS_TOKEN is not set"
+            exit 1
+          fi
+
+          split_and_push_branch() {
+            local prefix="$1"
+            local remote_repo="$2"
+            local branch="$3"
+
+            local split_sha
+            split_sha=$(git subtree split --prefix="${prefix}" "${SHA}")
+            git push "https://x-access-token:${TOKEN}@github.com/${remote_repo}.git" "${split_sha}:refs/heads/${branch}" --force
+          }
+
+          split_and_push_tag() {
+            local prefix="$1"
+            local remote_repo="$2"
+            local tag="$3"
+
+            local split_sha
+            split_sha=$(git subtree split --prefix="${prefix}" "${SHA}")
+            git push "https://x-access-token:${TOKEN}@github.com/${remote_repo}.git" "${split_sha}:refs/tags/${tag}" --force
+          }
+
+          if [ "${REF_TYPE}" = "branch" ]; then
+            if [[ ! "${REF_NAME}" =~ ^[0-9]+\.[0-9]+\.x$ ]]; then
+              echo "Skip branch ${REF_NAME}: not a release line branch (X.Y.x)."
+              exit 0
+            fi
+
+            split_and_push_branch "packages/grpc" "thesis-php/grpc-protocol" "${REF_NAME}"
+            split_and_push_branch "packages/client" "thesis-php/grpc-client" "${REF_NAME}"
+            split_and_push_branch "packages/server" "thesis-php/grpc-server" "${REF_NAME}"
+            exit 0
+          fi
+
+          if [ "${REF_TYPE}" = "tag" ]; then
+            if [[ ! "${REF_NAME}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+              echo "Skip tag ${REF_NAME}: not a semver-like tag without v-prefix."
+              exit 0
+            fi
+
+            split_and_push_tag "packages/grpc" "thesis-php/grpc-protocol" "${REF_NAME}"
+            split_and_push_tag "packages/client" "thesis-php/grpc-client" "${REF_NAME}"
+            split_and_push_tag "packages/server" "thesis-php/grpc-server" "${REF_NAME}"
+            exit 0
+          fi
+
+          echo "Unsupported ref type: ${REF_TYPE}"
+          exit 1

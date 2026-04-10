@@ -1,0 +1,38 @@
+{
+    "name": "thesis/grpc-server",
+    "description": "Async gRPC server for PHP with HTTP/2 transport, unary and streaming RPC handlers, interceptors, and graceful shutdown.",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "kafkiansky",
+            "email": "vadimzanfir@gmail.com"
+        },
+        {
+            "name": "Valentin Udaltsov",
+            "email": "udaltsov.valentin@gmail.com"
+        },
+        {
+            "name": "Thesis Team",
+            "homepage": "https://github.com/orgs/thesis-php/people"
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "amphp/http": "^2.1",
+        "amphp/http-server": "^3.4",
+        "amphp/socket": "^2.3",
+        "amphp/sync": "^2.3",
+        "psr/log": "^3.0",
+        "thesis/grpc-protocol": "^0.1"
+    },
+    "autoload": {
+        "psr-4": {
+            "Thesis\\Grpc\\": "src/"
+        }
+    },
+    "config": {
+        "lock": false,
+        "sort-packages": true
+    }
+}

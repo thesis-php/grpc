@@ -1,0 +1,44 @@
+{
+    "name": "thesis/grpc-protocol",
+    "description": "Shared gRPC protocol runtime for PHP: framing, metadata, status/error model, and encoding/compression primitives used by client and server.",
+    "license": "MIT",
+    "type": "library",
+    "authors": [
+        {
+            "name": "kafkiansky",
+            "email": "vadimzanfir@gmail.com"
+        },
+        {
+            "name": "Valentin Udaltsov",
+            "email": "udaltsov.valentin@gmail.com"
+        },
+        {
+            "name": "Thesis Team",
+            "homepage": "https://github.com/orgs/thesis-php/people"
+        }
+    ],
+    "require": {
+        "php": "^8.4",
+        "amphp/amp": "^3.1",
+        "amphp/byte-stream": "^2.1",
+        "amphp/pipeline": "^1.2",
+        "revolt/event-loop": "1.0.8",
+        "thesis/endian": "^0.3.3",
+        "thesis/googleapis-rpc-types": "^0.1.6",
+        "thesis/package-version": "^0.1.2",
+        "thesis/protobuf": "^0.1.8",
+        "thesis/protobuf-known-types": "^0.1.5"
+    },
+    "autoload": {
+        "psr-4": {
+            "Thesis\\Grpc\\": "src/"
+        },
+        "files": [
+            "src/autoload.files.php"
+        ]
+    },
+    "config": {
+        "lock": false,
+        "sort-packages": true
+    }
+}

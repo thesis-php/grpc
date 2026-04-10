@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Thesis\Grpc\Encoding;
+
+/**
+ * @api
+ */
+interface Encoder
+{
+    final public const string DEFAULT_ENCODING = 'proto';
+
+    /**
+     * @return non-empty-string
+     */
+    public function name(): string;
+
+    /**
+     * @template T of object
+     * @param T $request
+     * @throws EncodingFailed
+     */
+    public function encode(object $request): string;
+
+    /**
+     * @template T of object
+     * @param class-string<T> $classType
+     * @return T
+     * @throws DecodingFailed
+     */
+    public function decode(string $buffer, string $classType): object;
+}
