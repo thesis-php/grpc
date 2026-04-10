@@ -22,7 +22,9 @@
 
     <source restrictNotices="true" restrictWarnings="true" ignoreIndirectDeprecations="true">
         <include>
-            <directory>src</directory>
+            <directory>packages/grpc/src</directory>
+            <directory>packages/client/src</directory>
+            <directory>packages/server/src</directory>
         </include>
     </source>
 </phpunit>

@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 return Rector\Config\RectorConfig::configure()
     ->withPaths([
-        __DIR__ . '/src',
+        __DIR__ . '/packages/grpc/src',
+        __DIR__ . '/packages/client/src',
+        __DIR__ . '/packages/server/src',
         __DIR__ . '/tests',
     ])
     ->withParallel()

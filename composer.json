@@ -43,14 +43,30 @@
         "ext-bcmath": "*",
         "phpunit/phpunit": "^12.4",
         "symfony/var-dumper": "^8.0",
+        "thesis/grpc-client": "*@dev",
+        "thesis/grpc-protocol": "*@dev",
+        "thesis/grpc-server": "*@dev",
         "thesis/protoregistry": "^0.1.2"
     },
+    "repositories": [
+        {
+            "type": "path",
+            "url": "packages/*",
+            "options": {
+                "symlink": true
+            }
+        }
+    ],
     "autoload": {
         "psr-4": {
-            "Thesis\\Grpc\\": "src/"
+            "Thesis\\Grpc\\": [
+                "packages/grpc/src/",
+                "packages/client/src/",
+                "packages/server/src/"
+            ]
         },
         "files": [
-            "src/autoload.files.php"
+            "packages/grpc/src/autoload.files.php"
         ]
     },
     "autoload-dev": {

@@ -10,7 +10,9 @@ use PHPyh\CodingStandard\PhpCsFixerCodingStandard;
 $config = new Config()
     ->setFinder(
         Finder::create()
-            ->in(__DIR__ . '/src')
+            ->in(__DIR__ . '/packages/grpc/src')
+            ->in(__DIR__ . '/packages/client/src')
+            ->in(__DIR__ . '/packages/server/src')
             ->in(__DIR__ . '/tests')
             ->exclude([
                 'genproto',

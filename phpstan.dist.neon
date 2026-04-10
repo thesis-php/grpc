@@ -7,7 +7,9 @@ parameters:
     level: max
     paths:
         - examples
-        - src
+        - packages/grpc/src
+        - packages/client/src
+        - packages/server/src
         - tests
     tmpDir: var/phpstan
     editorUrl: ''
@@ -26,4 +28,4 @@ parameters:
     ignoreErrors:
         -
             identifier: property.uninitialized
-            path: src/Server/Internal/Http2/ConcurrentServerStream.php
+            path: packages/server/src/Server/Internal/Http2/ConcurrentServerStream.php

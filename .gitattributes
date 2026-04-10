@@ -5,8 +5,8 @@
 *.php diff=php
 
 * export-ignore
-/src/ -export-ignore
-/src/** -export-ignore
+/packages/ -export-ignore
+/packages/** -export-ignore
 /CHANGELOG.md -export-ignore
 /composer.json -export-ignore
 /LICENSE -export-ignore
