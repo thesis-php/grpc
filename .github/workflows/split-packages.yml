@@ -63,7 +63,7 @@ jobs:
 
             local split_sha
             split_sha=$(git subtree split --prefix="${prefix}" "${SHA}")
-            git push "https://x-access-token:${TOKEN}@github.com/${remote_repo}.git" "${split_sha}:refs/tags/${tag}" --force
+            git push "https://x-access-token:${TOKEN}@github.com/${remote_repo}.git" "${split_sha}:refs/tags/${tag}"
           }
 
           create_release_if_missing() {
@@ -80,6 +80,18 @@ jobs:
               --title "${REF_NAME}" \
               --generate-notes \
               --verify-tag
+          }
+
+          assert_packagist_version() {
+            local package_name="$1"
+            local url="https://repo.packagist.org/p2/${package_name}.json"
+
+            if ! curl -fsSL "${url}" | jq -e --arg version "${REF_NAME}" '.packages[$package_name][] | select(.version == $version)' >/dev/null; then
+              echo "Packagist does not contain ${package_name} version ${REF_NAME}"
+              return 1
+            fi
+
+            echo "Packagist contains ${package_name} version ${REF_NAME}"
           }
 
           if [ "${REF_TYPE}" = "branch" ]; then
@@ -107,6 +119,12 @@ jobs:
             create_release_if_missing "thesis-php/grpc-protocol"
             create_release_if_missing "thesis-php/grpc-client"
             create_release_if_missing "thesis-php/grpc-server"
+
+            # Give Packagist webhook processing some time, then verify all split packages are visible.
+            sleep 45
+            assert_packagist_version "thesis/grpc-protocol"
+            assert_packagist_version "thesis/grpc-client"
+            assert_packagist_version "thesis/grpc-server"
             exit 0
           fi
 
