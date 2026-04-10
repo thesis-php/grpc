@@ -17,6 +17,22 @@ concurrency:
 jobs:
   split:
     runs-on: ubuntu-latest
+    if: >-
+      (github.ref_type == 'tag' && contains(github.ref_name, '.'))
+      || (github.ref_type == 'branch' && startsWith(github.ref_name, '0.') && endsWith(github.ref_name, '.x'))
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - prefix: packages/grpc
+            remote: thesis-php/grpc-protocol
+            packagist: thesis/grpc-protocol
+          - prefix: packages/client
+            remote: thesis-php/grpc-client
+            packagist: thesis/grpc-client
+          - prefix: packages/server
+            remote: thesis-php/grpc-server
+            packagist: thesis/grpc-server
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -28,105 +44,43 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-      - name: Split and push
-        env:
-          TOKEN: ${{ secrets.SPLIT_REPOS_TOKEN }}
-          REF_NAME: ${{ github.ref_name }}
-          REF_TYPE: ${{ github.ref_type }}
-          SHA: ${{ github.sha }}
-        run: |
-          set -euo pipefail
-
-          if [ -z "${TOKEN}" ]; then
-            echo "SPLIT_REPOS_TOKEN is not set"
-            exit 1
-          fi
-
-          # Ensure push uses only SPLIT_REPOS_TOKEN and not checkout's default GITHUB_TOKEN credentials.
           git config --local --unset-all http.https://github.com/.extraheader || true
 
-          split_and_push_branch() {
-            local prefix="$1"
-            local remote_repo="$2"
-            local branch="$3"
+      - name: Split
+        id: split
+        run: echo "sha=$(git subtree split --prefix=${{ matrix.prefix }} ${{ github.sha }})" >> "$GITHUB_OUTPUT"
 
-            local split_sha
-            split_sha=$(git subtree split --prefix="${prefix}" "${SHA}")
-            git push "https://x-access-token:${TOKEN}@github.com/${remote_repo}.git" "${split_sha}:refs/heads/${branch}" --force
-          }
+      - name: Push branch
+        if: github.ref_type == 'branch'
+        run: >-
+          git push
+          "https://x-access-token:${{ secrets.SPLIT_REPOS_TOKEN }}@github.com/${{ matrix.remote }}.git"
+          "${{ steps.split.outputs.sha }}:refs/heads/${{ github.ref_name }}"
+          --force
 
-          split_and_push_tag() {
-            local prefix="$1"
-            local remote_repo="$2"
-            local tag="$3"
+      - name: Push tag
+        if: github.ref_type == 'tag'
+        run: >-
+          git push
+          "https://x-access-token:${{ secrets.SPLIT_REPOS_TOKEN }}@github.com/${{ matrix.remote }}.git"
+          "${{ steps.split.outputs.sha }}:refs/tags/${{ github.ref_name }}"
 
-            local split_sha
-            split_sha=$(git subtree split --prefix="${prefix}" "${SHA}")
-            git push "https://x-access-token:${TOKEN}@github.com/${remote_repo}.git" "${split_sha}:refs/tags/${tag}"
-          }
+      - name: Create release
+        if: github.ref_type == 'tag'
+        env:
+          GH_TOKEN: ${{ secrets.SPLIT_REPOS_TOKEN }}
+        run: >-
+          gh release view "${{ github.ref_name }}" --repo "${{ matrix.remote }}" >/dev/null 2>&1
+          || gh release create "${{ github.ref_name }}"
+          --repo "${{ matrix.remote }}"
+          --title "${{ github.ref_name }}"
+          --generate-notes
+          --verify-tag
 
-          create_release_if_missing() {
-            local remote_repo="$1"
-            export GH_TOKEN="${TOKEN}"
-
-            if gh release view "${REF_NAME}" --repo "${remote_repo}" >/dev/null 2>&1; then
-              echo "Release ${REF_NAME} already exists in ${remote_repo}"
-              return 0
-            fi
-
-            gh release create "${REF_NAME}" \
-              --repo "${remote_repo}" \
-              --title "${REF_NAME}" \
-              --generate-notes \
-              --verify-tag
-          }
-
-          assert_packagist_version() {
-            local package_name="$1"
-            local url="https://repo.packagist.org/p2/${package_name}.json"
-
-            if ! curl -fsSL "${url}" | jq -e --arg version "${REF_NAME}" '.packages[$package_name][] | select(.version == $version)' >/dev/null; then
-              echo "Packagist does not contain ${package_name} version ${REF_NAME}"
-              return 1
-            fi
-
-            echo "Packagist contains ${package_name} version ${REF_NAME}"
-          }
-
-          if [ "${REF_TYPE}" = "branch" ]; then
-            if [[ ! "${REF_NAME}" =~ ^[0-9]+\.[0-9]+\.x$ ]]; then
-              echo "Skip branch ${REF_NAME}: not a release line branch (X.Y.x)."
-              exit 0
-            fi
-
-            split_and_push_branch "packages/grpc" "thesis-php/grpc-protocol" "${REF_NAME}"
-            split_and_push_branch "packages/client" "thesis-php/grpc-client" "${REF_NAME}"
-            split_and_push_branch "packages/server" "thesis-php/grpc-server" "${REF_NAME}"
-            exit 0
-          fi
-
-          if [ "${REF_TYPE}" = "tag" ]; then
-            if [[ ! "${REF_NAME}" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
-              echo "Skip tag ${REF_NAME}: not a semver-like tag without v-prefix."
-              exit 0
-            fi
-
-            split_and_push_tag "packages/grpc" "thesis-php/grpc-protocol" "${REF_NAME}"
-            split_and_push_tag "packages/client" "thesis-php/grpc-client" "${REF_NAME}"
-            split_and_push_tag "packages/server" "thesis-php/grpc-server" "${REF_NAME}"
-
-            create_release_if_missing "thesis-php/grpc-protocol"
-            create_release_if_missing "thesis-php/grpc-client"
-            create_release_if_missing "thesis-php/grpc-server"
-
-            # Give Packagist webhook processing some time, then verify all split packages are visible.
-            sleep 45
-            assert_packagist_version "thesis/grpc-protocol"
-            assert_packagist_version "thesis/grpc-client"
-            assert_packagist_version "thesis/grpc-server"
-            exit 0
-          fi
-
-          echo "Unsupported ref type: ${REF_TYPE}"
-          exit 1
+      - name: Notify Packagist
+        if: github.ref_type == 'tag'
+        run: >-
+          curl -fsSL -X POST
+          "https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}"
+          -H "Content-Type: application/json"
+          -d '{"repository":{"url":"https://github.com/${{ matrix.remote }}"}}'
