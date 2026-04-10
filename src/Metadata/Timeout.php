@@ -149,7 +149,7 @@ function parseTimeout(Metadata $md): ?Timeout
 
     $value = substr($timeout, 0, \strlen($timeout) - 1);
 
-    if (!is_numeric($value)) {
+    if (!ctype_digit($value)) {
         return null;
     }
 

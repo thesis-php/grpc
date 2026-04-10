@@ -131,6 +131,26 @@ final class TimeoutTest extends TestCase
             'iS',
             null,
         ];
+
+        yield 'scientific notation is rejected' => [
+            '1e3S',
+            null,
+        ];
+
+        yield 'signed value is rejected' => [
+            '+10S',
+            null,
+        ];
+
+        yield 'floating point is rejected' => [
+            '1.5S',
+            null,
+        ];
+
+        yield 'negative value is rejected' => [
+            '-1S',
+            null,
+        ];
     }
 
     public function testFromInterval(): void

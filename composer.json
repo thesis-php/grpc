@@ -19,6 +19,7 @@
     ],
     "require": {
         "php": "^8.4",
+        "ext-ctype": "*",
         "amphp/amp": "^3.1",
         "amphp/byte-stream": "^2.1",
         "amphp/cache": "^2.0",
