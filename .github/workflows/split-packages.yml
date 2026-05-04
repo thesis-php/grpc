@@ -57,15 +57,19 @@ jobs:
             exit 0
           fi
 
-          if git diff --quiet "$previous_tag" "${{ github.sha }}" -- "${{ matrix.prefix }}"; then
+          current_split=$(git subtree split --prefix=${{ matrix.prefix }} ${{ github.sha }})
+          previous_split=$(git subtree split --prefix=${{ matrix.prefix }} "$previous_tag")
+
+          if [ "$current_split" = "$previous_split" ]; then
             echo "changed=false" >> "$GITHUB_OUTPUT"
           else
             echo "changed=true" >> "$GITHUB_OUTPUT"
+            echo "sha=$current_split" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Split
         id: split
-        if: github.ref_type == 'branch' || steps.changes.outputs.changed == 'true'
+        if: github.ref_type == 'branch'
         run: echo "sha=$(git subtree split --prefix=${{ matrix.prefix }} ${{ github.sha }})" >> "$GITHUB_OUTPUT"
 
       - name: Push branch
@@ -81,7 +85,7 @@ jobs:
         run: >-
           git push
           "https://x-access-token:${{ secrets.SPLIT_REPOS_TOKEN }}@github.com/${{ matrix.remote }}.git"
-          "${{ steps.split.outputs.sha }}:refs/tags/${{ github.ref_name }}"
+          "${{ steps.changes.outputs.sha }}:refs/tags/${{ github.ref_name }}"
 
       - name: Create release
         if: github.ref_type == 'tag' && steps.changes.outputs.changed == 'true'

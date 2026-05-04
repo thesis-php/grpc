@@ -153,11 +153,13 @@ final class RandomBalancer implements LoadBalancer
         private readonly Randomizer $randomizer = new Randomizer(),
     ) {}
 
+    #[\Override]
     public function refresh(array $endpoints): void
     {
         $this->endpoints = $endpoints;
     }
 
+    #[\Override]
     public function pick(PickContext $context): Endpoint
     {
         return $this->endpoints[$this->randomizer->getInt(0, \count($this->endpoints) - 1)];
@@ -166,11 +168,13 @@ final class RandomBalancer implements LoadBalancer
 
 final readonly class RandomBalancerFactory implements LoadBalancerFactory
 {
+    #[\Override]
     public function name(): string
     {
         return 'random';
     }
 
+    #[\Override]
     public function create(array $endpoints): LoadBalancer
     {
         return new RandomBalancer($endpoints);
@@ -243,6 +247,7 @@ use Thesis\Grpc\Metadata;
 
 final readonly class ClientAuthInterceptor implements Client\Interceptor
 {
+    #[\Override]
     public function intercept(Invoke $invoke, Metadata $md, Cancellation $cancellation, callable $next): ClientStream
     {
         return $next($invoke, $md->with('Authorization', 'supertoken'), $cancellation);
