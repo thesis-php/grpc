@@ -27,6 +27,7 @@ final class Builder
     private const string DEFAULT_HOST = '127.0.0.1:50051';
     private const float DEFAULT_CONNECT_TIMEOUT = 10;
     private const int DEFAULT_CONNECTION_LIMIT = \PHP_INT_MAX;
+    private const int DEFAULT_TRANSFER_TIMEOUT = 0; // no transfer timeout
 
     /** @var ?non-empty-string */
     private ?string $host = null;
@@ -44,6 +45,8 @@ final class Builder
     private int $connectionLimit = self::DEFAULT_CONNECTION_LIMIT;
 
     private float $connectTimeout = self::DEFAULT_CONNECT_TIMEOUT;
+
+    private float $transferTimeout = self::DEFAULT_TRANSFER_TIMEOUT;
 
     private ?SocketConnector $connector = null;
 
@@ -140,6 +143,14 @@ final class Builder
         return $builder;
     }
 
+    public function withTransferTimeout(float $transferTimeout): self
+    {
+        $builder = clone $this;
+        $builder->transferTimeout = $transferTimeout;
+
+        return $builder;
+    }
+
     public function withTransportCredentials(TransportCredentials $credentials): self
     {
         $builder = clone $this;
@@ -187,6 +198,7 @@ final class Builder
         $loadBalancerFactory = $this->loadBalancerFactory ?? new LoadBalancer\PickFirstFactory();
         $tlsContext = $this->credentials?->createContext();
         $uriFactory = new Http2\UriFactory($tlsContext !== null ? Internal\HttpScheme::Https : Internal\HttpScheme::Http);
+        $transferTimeout = $this->transferTimeout;
 
         $resolver = $this->endpointResolvers[$target->scheme] ?? match ($target->scheme) {
             Scheme::Dns => new EndpointResolver\DnsResolver(),
@@ -228,6 +240,7 @@ final class Builder
                         http: $httpclient,
                         uri: $uriFactory,
                         errors: new Http2\ErrorHandler($protobuf),
+                        transferTimeout: $transferTimeout,
                         encoder: $encoder,
                         compressor: $compressor,
                     ),
