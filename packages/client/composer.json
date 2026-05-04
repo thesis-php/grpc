@@ -24,7 +24,7 @@
         "amphp/http-client": "^5.3",
         "amphp/socket": "^2.3",
         "league/uri": "^7.8",
-        "thesis/grpc-protocol": "^0.1"
+        "thesis/grpc-protocol": "^0.1.5"
     },
     "autoload": {
         "psr-4": {
