@@ -46,10 +46,7 @@ final class ServerStreamTest extends TestCase
 
         $stream = $client->subscribe(new SubscribeRequest('payments'));
 
-        $paymentEvents = [];
-        foreach ($stream as $event) {
-            $paymentEvents[] = $event;
-        }
+        $paymentEvents = iterator_to_array($stream);
 
         self::assertCount(2, $paymentEvents);
         self::assertEquals(
@@ -62,10 +59,7 @@ final class ServerStreamTest extends TestCase
 
         $stream = $client->subscribe(new SubscribeRequest('subscriptions'));
 
-        $subscriptionEvents = [];
-        foreach ($stream as $event) {
-            $subscriptionEvents[] = $event;
-        }
+        $subscriptionEvents = iterator_to_array($stream);
 
         self::assertCount(1, $subscriptionEvents);
         self::assertEquals(
