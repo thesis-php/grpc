@@ -46,8 +46,26 @@ jobs:
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git config --local --unset-all http.https://github.com/.extraheader || true
 
+      - name: Detect package changes for tag
+        id: changes
+        if: github.ref_type == 'tag'
+        run: |
+          previous_tag=$(git describe --tags --abbrev=0 "${{ github.sha }}^" 2>/dev/null || true)
+
+          if [ -z "$previous_tag" ]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if git diff --quiet "$previous_tag" "${{ github.sha }}" -- "${{ matrix.prefix }}"; then
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Split
         id: split
+        if: github.ref_type == 'branch' || steps.changes.outputs.changed == 'true'
         run: echo "sha=$(git subtree split --prefix=${{ matrix.prefix }} ${{ github.sha }})" >> "$GITHUB_OUTPUT"
 
       - name: Push branch
@@ -59,14 +77,14 @@ jobs:
           --force
 
       - name: Push tag
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' && steps.changes.outputs.changed == 'true'
         run: >-
           git push
           "https://x-access-token:${{ secrets.SPLIT_REPOS_TOKEN }}@github.com/${{ matrix.remote }}.git"
           "${{ steps.split.outputs.sha }}:refs/tags/${{ github.ref_name }}"
 
       - name: Create release
-        if: github.ref_type == 'tag'
+        if: github.ref_type == 'tag' && steps.changes.outputs.changed == 'true'
         env:
           GH_TOKEN: ${{ secrets.SPLIT_REPOS_TOKEN }}
         run: >-
@@ -76,11 +94,3 @@ jobs:
           --title "${{ github.ref_name }}"
           --generate-notes
           --verify-tag
-
-      - name: Notify Packagist
-        if: github.ref_type == 'tag'
-        run: >-
-          curl -fsSL -X POST
-          "https://packagist.org/api/update-package?username=${{ secrets.PACKAGIST_USERNAME }}&apiToken=${{ secrets.PACKAGIST_API_TOKEN }}"
-          -H "Content-Type: application/json"
-          -d '{"repository":{"url":"https://github.com/${{ matrix.remote }}"}}'
