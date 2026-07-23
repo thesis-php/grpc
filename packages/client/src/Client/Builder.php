@@ -28,6 +28,7 @@ final class Builder
     private const float DEFAULT_CONNECT_TIMEOUT = 10;
     private const int DEFAULT_CONNECTION_LIMIT = \PHP_INT_MAX;
     private const int DEFAULT_TRANSFER_TIMEOUT = 0; // no transfer timeout
+    private const int DEFAULT_INACTIVITY_TIMEOUT = 0; // no inactivity timeout
 
     /** @var ?non-empty-string */
     private ?string $host = null;
@@ -47,6 +48,8 @@ final class Builder
     private float $connectTimeout = self::DEFAULT_CONNECT_TIMEOUT;
 
     private float $transferTimeout = self::DEFAULT_TRANSFER_TIMEOUT;
+
+    private float $inactivityTimeout = self::DEFAULT_INACTIVITY_TIMEOUT;
 
     private ?SocketConnector $connector = null;
 
@@ -151,6 +154,14 @@ final class Builder
         return $builder;
     }
 
+    public function withInactivityTimeout(float $inactivityTimeout): self
+    {
+        $builder = clone $this;
+        $builder->inactivityTimeout = $inactivityTimeout;
+
+        return $builder;
+    }
+
     public function withTransportCredentials(TransportCredentials $credentials): self
     {
         $builder = clone $this;
@@ -199,6 +210,7 @@ final class Builder
         $tlsContext = $this->credentials?->createContext();
         $uriFactory = new Http2\UriFactory($tlsContext !== null ? Internal\HttpScheme::Https : Internal\HttpScheme::Http);
         $transferTimeout = $this->transferTimeout;
+        $inactivityTimeout = $this->inactivityTimeout;
 
         $resolver = $this->endpointResolvers[$target->scheme] ?? match ($target->scheme) {
             Scheme::Dns => new EndpointResolver\DnsResolver(),
@@ -241,6 +253,7 @@ final class Builder
                         uri: $uriFactory,
                         errors: new Http2\ErrorHandler($protobuf),
                         transferTimeout: $transferTimeout,
+                        inactivityTimeout: $inactivityTimeout,
                         encoder: $encoder,
                         compressor: $compressor,
                     ),

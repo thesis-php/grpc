@@ -35,6 +35,7 @@ final readonly class StreamFactory
         private UriFactory $uri,
         private ErrorHandler $errors,
         private float $transferTimeout,
+        private float $inactivityTimeout,
         Encoder $encoder,
         Compressor $compressor,
     ) {
@@ -72,6 +73,7 @@ final readonly class StreamFactory
         $request->setProtocolVersions(['2']);
         $request->setHeaders($md->kv);
         $request->setTransferTimeout($this->transferTimeout);
+        $request->setInactivityTimeout($this->inactivityTimeout);
 
         // If the program terminates after making a request, the HTTP client may not have enough time to finish sending the request body and trailers,
         // causing an error on the server side — after a certain timeout, the server will detect that the client unexpectedly closed the connection.
