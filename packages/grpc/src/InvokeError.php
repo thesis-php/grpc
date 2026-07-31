@@ -18,11 +18,15 @@ final class InvokeError extends GrpcException
         public readonly Code $statusCode,
         public readonly ?string $statusMessage = null,
         public readonly array $details = [],
+        ?\Throwable $previous = null,
     ) {
-        parent::__construct(\sprintf(
-            'A grpc error with status code "%s" and message "%s" occurred',
-            $statusCode->name,
-            $statusMessage ?? '',
-        ));
+        parent::__construct(
+            \sprintf(
+                'A grpc error with status code "%s" and message "%s" occurred',
+                $statusCode->name,
+                $statusMessage ?? '',
+            ),
+            previous: $previous,
+        );
     }
 }

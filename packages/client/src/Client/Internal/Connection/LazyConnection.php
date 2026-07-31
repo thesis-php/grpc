@@ -29,15 +29,26 @@ final class LazyConnection implements Connection
     ) {}
 
     #[\Override]
+    public function invoke(
+        object $request,
+        Invoke $invoke,
+        Metadata $md = new Metadata(),
+        Cancellation $cancellation = new NullCancellation(),
+    ): object {
+        return $this
+            ->createConnection($cancellation)
+            ->invoke($request, $invoke, $md, $cancellation);
+    }
+
+    #[\Override]
     public function createStream(
         Invoke $invoke,
         Metadata $md = new Metadata(),
         Cancellation $cancellation = new NullCancellation(),
     ): ClientStream {
-        $this->future ??= async($this->factory);
-        $connection = $this->future->await($cancellation);
-
-        return $connection->createStream($invoke, $md, $cancellation);
+        return $this
+            ->createConnection($cancellation)
+            ->createStream($invoke, $md, $cancellation);
     }
 
     #[\Override]
@@ -47,5 +58,10 @@ final class LazyConnection implements Connection
         $this->future = null;
 
         $future?->await($cancellation)->close($cancellation);
+    }
+
+    private function createConnection(Cancellation $cancellation): Connection
+    {
+        return ($this->future ??= async($this->factory))->await($cancellation);
     }
 }

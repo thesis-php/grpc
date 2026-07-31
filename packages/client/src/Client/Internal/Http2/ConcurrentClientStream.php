@@ -40,7 +40,10 @@ final class ConcurrentClientStream implements ClientStream
         private readonly \Closure $decode,
         private readonly ErrorHandler $errors,
         private readonly Future $complete,
-    ) {}
+    ) {
+        $responseFuture->ignore();
+        $complete->ignore();
+    }
 
     #[\Override]
     public function send(object $message): void

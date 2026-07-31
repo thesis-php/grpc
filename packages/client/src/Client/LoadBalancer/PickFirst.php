@@ -20,7 +20,7 @@ final class PickFirst implements LoadBalancer
      * @param non-empty-list<Endpoint> $endpoints
      */
     public function __construct(
-        array $endpoints,
+        private array $endpoints,
         private readonly Randomizer $randomizer,
     ) {
         $this->current = $this->doPick($endpoints);
@@ -29,12 +29,20 @@ final class PickFirst implements LoadBalancer
     #[\Override]
     public function refresh(array $endpoints): void
     {
+        $this->endpoints = $endpoints;
         $this->current = $this->doPick($endpoints, $this->current);
     }
 
     #[\Override]
     public function pick(PickContext $context): Endpoint
     {
+        foreach ([$this->current, ...$this->endpoints] as $endpoint) {
+            if (!$context->excluded($endpoint)) {
+                $this->current = $endpoint;
+                break;
+            }
+        }
+
         return $this->current;
     }
 

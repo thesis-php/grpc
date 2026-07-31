@@ -26,16 +26,12 @@ final readonly class AmphpHttpClient implements Client
         Metadata $md = new Metadata(),
         Cancellation $cancellation = new NullCancellation(),
     ): object {
-        $stream = $this->connection->createStream(
+        return $this->connection->invoke(
+            $request,
             $invoke,
             $md,
             $cancellation,
         );
-
-        $stream->send($request);
-        $stream->close();
-
-        return $stream->receive();
     }
 
     #[\Override]

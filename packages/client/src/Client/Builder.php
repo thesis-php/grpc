@@ -9,6 +9,7 @@ use Amp\Http\Client\Connection\DefaultConnectionFactory;
 use Amp\Http\Client\DelegateHttpClient;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Socket\ConnectContext;
+use Amp\Socket\DnsSocketConnector;
 use Amp\Socket\SocketConnector;
 use Thesis\Grpc\Client;
 use Thesis\Grpc\Client\Internal\Connection;
@@ -61,6 +62,8 @@ final class Builder
     private ?Decoder $protobuf = null;
 
     private ?LoadBalancerFactory $loadBalancerFactory = null;
+
+    private ?Retry $retry = null;
 
     /** @var \SplObjectStorage<Scheme, EndpointResolver> */
     private \SplObjectStorage $endpointResolvers;
@@ -186,6 +189,14 @@ final class Builder
         return $builder;
     }
 
+    public function withRetry(Retry $policy): self
+    {
+        $builder = clone $this;
+        $builder->retry = $policy;
+
+        return $builder;
+    }
+
     public function withEndpointResolver(Scheme $scheme, EndpointResolver $resolver): self
     {
         $builder = clone $this;
@@ -207,6 +218,7 @@ final class Builder
         $compressor = $this->compressor ?? IdentityCompressor::Compressor;
         $protobuf = $this->protobuf ?? Decoder\Builder::buildDefault();
         $loadBalancerFactory = $this->loadBalancerFactory ?? new LoadBalancer\PickFirstFactory();
+        $retry = $this->retry ?? Retry::disabled();
         $tlsContext = $this->credentials?->createContext();
         $uriFactory = new Http2\UriFactory($tlsContext !== null ? Internal\HttpScheme::Https : Internal\HttpScheme::Http);
         $transferTimeout = $this->transferTimeout;
@@ -230,7 +242,7 @@ final class Builder
             ->usingPool(ConnectionLimitingPool::byAuthority(
                 $this->connectionLimit,
                 new DefaultConnectionFactory(
-                    $this->connector,
+                    $this->connector ?? new DnsSocketConnector(),
                     new ConnectContext()
                         ->withConnectTimeout($this->connectTimeout)
                         ->withTlsContext($tlsContext),
@@ -257,6 +269,7 @@ final class Builder
                         encoder: $encoder,
                         compressor: $compressor,
                     ),
+                    retry: $retry,
                 ),
             ),
         );

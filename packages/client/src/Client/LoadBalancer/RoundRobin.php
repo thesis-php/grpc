@@ -37,6 +37,14 @@ final class RoundRobin implements LoadBalancer
     #[\Override]
     public function pick(PickContext $context): Endpoint
     {
+        for ($i = 0; $i < $this->count; ++$i) {
+            $endpoint = $this->endpoints[$this->cursor++ % $this->count]; // @phpstan-ignore offsetAccess.notFound
+
+            if (!$context->excluded($endpoint)) {
+                return $endpoint;
+            }
+        }
+
         return $this->endpoints[$this->cursor++ % $this->count]; // @phpstan-ignore offsetAccess.notFound
     }
 }
