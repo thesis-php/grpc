@@ -53,7 +53,12 @@
             "type": "path",
             "url": "packages/*",
             "options": {
-                "symlink": true
+                "symlink": true,
+                "versions": {
+                    "thesis/grpc-client": "0.1.x-dev",
+                    "thesis/grpc-protocol": "0.1.x-dev",
+                    "thesis/grpc-server": "0.1.x-dev"
+                }
             }
         }
     ],
