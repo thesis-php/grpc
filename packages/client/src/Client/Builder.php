@@ -38,8 +38,11 @@ final class Builder
 
     private ?DelegateHttpClient $httpclient = null;
 
-    /** @var list<Interceptor> */
-    private array $interceptors = [];
+    /** @var list<UnaryInterceptor> */
+    private array $unaryInterceptors = [];
+
+    /** @var list<StreamInterceptor> */
+    private array $streamInterceptors = [];
 
     private ?TransportCredentials $credentials = null;
 
@@ -62,8 +65,6 @@ final class Builder
     private ?Decoder $protobuf = null;
 
     private ?LoadBalancerFactory $loadBalancerFactory = null;
-
-    private ?Retry $retry = null;
 
     /** @var \SplObjectStorage<Scheme, EndpointResolver> */
     private \SplObjectStorage $endpointResolvers;
@@ -119,11 +120,25 @@ final class Builder
     /**
      * @no-named-arguments
      */
-    public function withInterceptors(Interceptor ...$interceptors): self
+    public function withUnaryInterceptors(UnaryInterceptor ...$interceptors): self
     {
         $builder = clone $this;
-        $builder->interceptors = [
-            ...$builder->interceptors,
+        $builder->unaryInterceptors = [
+            ...$builder->unaryInterceptors,
+            ...$interceptors,
+        ];
+
+        return $builder;
+    }
+
+    /**
+     * @no-named-arguments
+     */
+    public function withStreamInterceptors(StreamInterceptor ...$interceptors): self
+    {
+        $builder = clone $this;
+        $builder->streamInterceptors = [
+            ...$builder->streamInterceptors,
             ...$interceptors,
         ];
 
@@ -189,14 +204,6 @@ final class Builder
         return $builder;
     }
 
-    public function withRetry(Retry $policy): self
-    {
-        $builder = clone $this;
-        $builder->retry = $policy;
-
-        return $builder;
-    }
-
     public function withEndpointResolver(Scheme $scheme, EndpointResolver $resolver): self
     {
         $builder = clone $this;
@@ -218,7 +225,6 @@ final class Builder
         $compressor = $this->compressor ?? IdentityCompressor::Compressor;
         $protobuf = $this->protobuf ?? Decoder\Builder::buildDefault();
         $loadBalancerFactory = $this->loadBalancerFactory ?? new LoadBalancer\PickFirstFactory();
-        $retry = $this->retry ?? Retry::disabled();
         $tlsContext = $this->credentials?->createContext();
         $uriFactory = new Http2\UriFactory($tlsContext !== null ? Internal\HttpScheme::Https : Internal\HttpScheme::Http);
         $transferTimeout = $this->transferTimeout;
@@ -230,12 +236,21 @@ final class Builder
             Scheme::Ipv4, Scheme::Ipv6, Scheme::Unix => new EndpointResolver\StaticResolver(),
         };
 
-        $interceptor = new Http2\InterceptorComposer([
-            ...$this->interceptors,
-            new Http2\AppendControlMetadataInterceptor(
-                $encoder->name(),
-                $compressor->name(),
-            ),
+        $controlMetadata = new Http2\AppendControlMetadataInterceptor(
+            $encoder->name(),
+            $compressor->name(),
+        );
+
+        // Control metadata sits innermost (closest to the transport) so every user
+        // interceptor runs before the HTTP/2 headers are finalised.
+        $unary = new Http2\UnaryInterceptorComposer([
+            ...$this->unaryInterceptors,
+            $controlMetadata,
+        ]);
+
+        $stream = new Http2\StreamInterceptorComposer([
+            ...$this->streamInterceptors,
+            $controlMetadata,
         ]);
 
         $httpclient = $this->httpclient ?? new HttpClientBuilder()
@@ -259,7 +274,6 @@ final class Builder
                     target: $target,
                     resolver: $resolver,
                     loadBalancerFactory: $loadBalancerFactory,
-                    interceptor: $interceptor,
                     streams: new Http2\StreamFactory(
                         http: $httpclient,
                         uri: $uriFactory,
@@ -269,9 +283,10 @@ final class Builder
                         encoder: $encoder,
                         compressor: $compressor,
                     ),
-                    retry: $retry,
                 ),
             ),
+            $unary,
+            $stream,
         );
     }
 }

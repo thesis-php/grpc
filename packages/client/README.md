@@ -236,23 +236,43 @@ $client = new Client\Builder()
 
 ## Interceptors
 
-Interceptors let you add cross-cutting logic (auth, logging, tracing, retry, metadata enrichment) without changing service stubs.
+Interceptors let you add cross-cutting logic (auth, logging, tracing, metadata enrichment) without changing service stubs. Mirroring gRPC, they come in two flavours, registered on separate chains:
+
+- `UnaryInterceptor` wraps a whole unary `request → response` call (via `withUnaryInterceptors()`). A retry policy, for instance, is naturally a unary interceptor — re-invoking `$invoker` reuses the call's pick context, so the transport fails over to another endpoint automatically.
+- `StreamInterceptor` wraps the creation of a stream (via `withStreamInterceptors()`), and so also covers the underlying stream of every streaming RPC.
+
+A unary call does **not** run the stream chain and vice versa. An interceptor that must apply to both (e.g. auth) implements both interfaces and is registered on both chains.
 
 ```php
 use Amp\Cancellation;
 use Thesis\Grpc\Client;
 use Thesis\Grpc\Client\Invoke;
+use Thesis\Grpc\Client\StreamInterceptor;
+use Thesis\Grpc\Client\UnaryInterceptor;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Metadata;
 
-final readonly class ClientAuthInterceptor implements Client\Interceptor
+final readonly class ClientAuthInterceptor implements UnaryInterceptor, StreamInterceptor
 {
     #[\Override]
-    public function intercept(Invoke $invoke, Metadata $md, Cancellation $cancellation, callable $next): ClientStream
+    public function interceptUnary(object $request, Invoke $invoke, Metadata $md, Cancellation $cancellation, callable $invoker): object
     {
-        return $next($invoke, $md->with('Authorization', 'supertoken'), $cancellation);
+        return $invoker($request, $invoke, $md->with('Authorization', 'supertoken'), $cancellation);
+    }
+
+    #[\Override]
+    public function interceptStream(Invoke $invoke, Metadata $md, Cancellation $cancellation, callable $newStream): ClientStream
+    {
+        return $newStream($invoke, $md->with('Authorization', 'supertoken'), $cancellation);
     }
 }
+
+$auth = new ClientAuthInterceptor();
+
+$client = new Client\Builder()
+    ->withUnaryInterceptors($auth)
+    ->withStreamInterceptors($auth)
+    ->build();
 ```
 
 ## Client streaming

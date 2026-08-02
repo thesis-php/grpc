@@ -59,8 +59,11 @@ final class Builder
     /** @var list<Middleware> */
     private array $middlewares = [];
 
-    /** @var list<Interceptor> */
-    private array $interceptors = [];
+    /** @var list<UnaryInterceptor> */
+    private array $unaryInterceptors = [];
+
+    /** @var list<StreamInterceptor> */
+    private array $streamInterceptors = [];
 
     /** @var list<Service> */
     private array $services = [];
@@ -159,11 +162,25 @@ final class Builder
     /**
      * @no-named-arguments
      */
-    public function withInterceptors(Interceptor ...$interceptors): self
+    public function withUnaryInterceptors(UnaryInterceptor ...$interceptors): self
     {
         $builder = clone $this;
-        $builder->interceptors = [
-            ...$builder->interceptors,
+        $builder->unaryInterceptors = [
+            ...$builder->unaryInterceptors,
+            ...$interceptors,
+        ];
+
+        return $builder;
+    }
+
+    /**
+     * @no-named-arguments
+     */
+    public function withStreamInterceptors(StreamInterceptor ...$interceptors): self
+    {
+        $builder = clone $this;
+        $builder->streamInterceptors = [
+            ...$builder->streamInterceptors,
             ...$interceptors,
         ];
 
@@ -379,7 +396,8 @@ final class Builder
                 encoderFactory: new MessageEncoderFactory(array_values($this->encoders)),
                 compressorFactory: new MessageCompressorFactory($compressors),
                 protobuf: $this->protobuf ?? Protobuf\Encoder\Builder::buildDefault(),
-                interceptors: $this->interceptors,
+                unaryInterceptors: $this->unaryInterceptors,
+                streamInterceptors: $this->streamInterceptors,
             ),
             errorHandler: new ServerErrorHandler(),
         );

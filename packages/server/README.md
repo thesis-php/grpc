@@ -113,22 +113,40 @@ $server = new Server\Builder()
 
 ## Interceptors
 
-Interceptors let you apply cross-cutting server logic like auth, audit, tracing, and request validation around every RPC.
+Interceptors let you apply cross-cutting server logic like auth, audit, tracing, and request validation around every RPC. Mirroring gRPC, they come in two flavours on separate chains:
+
+- `UnaryInterceptor` wraps a unary `request → response` call (via `withUnaryInterceptors()`), seeing the decoded request and response.
+- `StreamInterceptor` wraps the `ServerStream` of the three streaming RPC types (via `withStreamInterceptors()`).
+
+A unary RPC runs only the unary chain, a streaming RPC only the stream chain. An interceptor that must guard both (e.g. auth) implements both interfaces and is registered on both chains.
 
 ```php
 use Amp\Cancellation;
 use Thesis\Grpc\Metadata;
-use Thesis\Grpc\Server;
 use Thesis\Grpc\Server\StreamInfo;
+use Thesis\Grpc\Server\StreamInterceptor;
+use Thesis\Grpc\Server\UnaryInterceptor;
 use Thesis\Grpc\ServerStream;
 
-final readonly class ServerAuthInterceptor implements Server\Interceptor
+final readonly class ServerAuthInterceptor implements UnaryInterceptor, StreamInterceptor
 {
-    public function intercept(ServerStream $stream, StreamInfo $info, Metadata $md, Cancellation $cancellation, callable $next): void
+    public function interceptUnary(object $request, StreamInfo $info, Metadata $md, Cancellation $cancellation, callable $handler): object
+    {
+        return $handler($request, $info, $md, $cancellation);
+    }
+
+    public function interceptStream(ServerStream $stream, StreamInfo $info, Metadata $md, Cancellation $cancellation, callable $next): void
     {
         $next($stream, $info, $md, $cancellation);
     }
 }
+
+$auth = new ServerAuthInterceptor();
+
+$server = new Server\Builder()
+    ->withUnaryInterceptors($auth)
+    ->withStreamInterceptors($auth)
+    ->build();
 ```
 
 ## RPC types

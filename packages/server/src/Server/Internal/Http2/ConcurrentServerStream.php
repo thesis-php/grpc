@@ -35,6 +35,10 @@ final class ConcurrentServerStream implements ServerStream
     #[\Override]
     public function send(object $message): void
     {
+        if ($this->send->isComplete()) {
+            throw new ServerStreamIsClosed();
+        }
+
         try {
             $this->send->push($message);
         } catch (Pipeline\DisposedException $e) {

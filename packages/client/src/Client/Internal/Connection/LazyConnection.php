@@ -9,6 +9,7 @@ use Amp\Future;
 use Amp\NullCancellation;
 use Thesis\Grpc\Client\Internal\Connection;
 use Thesis\Grpc\Client\Invoke;
+use Thesis\Grpc\Client\PickContext;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Metadata;
 use function Amp\async;
@@ -29,26 +30,15 @@ final class LazyConnection implements Connection
     ) {}
 
     #[\Override]
-    public function invoke(
-        object $request,
-        Invoke $invoke,
-        Metadata $md = new Metadata(),
-        Cancellation $cancellation = new NullCancellation(),
-    ): object {
-        return $this
-            ->createConnection($cancellation)
-            ->invoke($request, $invoke, $md, $cancellation);
-    }
-
-    #[\Override]
     public function createStream(
         Invoke $invoke,
-        Metadata $md = new Metadata(),
-        Cancellation $cancellation = new NullCancellation(),
+        Metadata $md,
+        Cancellation $cancellation,
+        PickContext $pick,
     ): ClientStream {
         return $this
             ->createConnection($cancellation)
-            ->createStream($invoke, $md, $cancellation);
+            ->createStream($invoke, $md, $cancellation, $pick);
     }
 
     #[\Override]

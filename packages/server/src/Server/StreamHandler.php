@@ -13,7 +13,7 @@ use Thesis\Grpc\ServerStream;
  * @template In of object
  * @template Out of object
  */
-interface Handler
+interface StreamHandler
 {
     /**
      * @param ServerStream<In, Out> $stream

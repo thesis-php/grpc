@@ -12,9 +12,9 @@ use Thesis\Grpc\ServerStream;
  * @api
  * @template TRequest of object
  * @template TResponse of object
- * @template-implements Handler<TRequest, TResponse>
+ * @template-implements StreamHandler<TRequest, TResponse>
  */
-final readonly class ServerStreamHandler implements Handler
+final readonly class ServerStreamHandler implements StreamHandler
 {
     /**
      * @param \Closure(TRequest, Metadata, Cancellation): iterable<array-key, TResponse> $handler
