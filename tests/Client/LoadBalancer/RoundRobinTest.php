@@ -104,6 +104,33 @@ final class RoundRobinTest extends TestCase
         ];
     }
 
+    public function testPickSkipsExcludedEndpoints(): void
+    {
+        $a = new Endpoint(new Address('10.0.0.1:50051'));
+        $b = new Endpoint(new Address('10.0.0.2:50051'));
+        $c = new Endpoint(new Address('10.0.0.3:50051'));
+
+        $balancer = new RoundRobinFactory()->create([$a, $b, $c]);
+
+        $context = new PickContext('/test.Service/Method', new Metadata(), [$a, $b]);
+
+        for ($i = 0; $i < 5; ++$i) {
+            self::assertTrue($c->equals($balancer->pick($context)));
+        }
+    }
+
+    public function testPickFallsBackWhenEveryEndpointIsExcluded(): void
+    {
+        $a = new Endpoint(new Address('10.0.0.1:50051'));
+        $b = new Endpoint(new Address('10.0.0.2:50051'));
+
+        $balancer = new RoundRobinFactory()->create([$a, $b]);
+
+        $picked = $balancer->pick(new PickContext('/test.Service/Method', new Metadata(), [$a, $b]));
+
+        self::assertTrue($a->equals($picked) || $b->equals($picked));
+    }
+
     private static function context(): PickContext
     {
         return new PickContext('/test.Service/Method', new Metadata());

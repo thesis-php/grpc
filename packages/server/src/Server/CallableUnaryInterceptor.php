@@ -6,36 +6,35 @@ namespace Thesis\Grpc\Server;
 
 use Amp\Cancellation;
 use Thesis\Grpc\Metadata;
-use Thesis\Grpc\ServerStream;
 
 /**
  * @api
  */
-final readonly class CallableInterceptor implements Interceptor
+final readonly class CallableUnaryInterceptor implements UnaryInterceptor
 {
     /**
      * @template In of object
      * @template Out of object
-     * @param callable(ServerStream<In, Out>, StreamInfo, Metadata, Cancellation, callable(ServerStream<In, Out>, StreamInfo, Metadata, Cancellation): void): void $handler
+     * @param callable(In, StreamInfo, Metadata, Cancellation, callable(In, StreamInfo, Metadata, Cancellation): Out): Out $handler
      */
     public function __construct(
         private mixed $handler,
     ) {}
 
     #[\Override]
-    public function intercept(
-        ServerStream $stream,
+    public function interceptUnary(
+        object $request,
         StreamInfo $info,
         Metadata $md,
         Cancellation $cancellation,
-        callable $next,
-    ): void {
-        ($this->handler)(
-            $stream,
+        callable $handler,
+    ): object {
+        return ($this->handler)(
+            $request,
             $info,
             $md,
             $cancellation,
-            $next,
+            $handler,
         );
     }
 }

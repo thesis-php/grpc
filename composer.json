@@ -37,7 +37,7 @@
         "thesis/googleapis-rpc-types": "^0.1.6",
         "thesis/package-version": "^0.1.2",
         "thesis/protobuf": "^0.1.8",
-        "thesis/protobuf-known-types": "^0.1.5"
+        "thesis/protobuf-known-types": "^0.1.7"
     },
     "require-dev": {
         "ext-bcmath": "*",
@@ -53,7 +53,12 @@
             "type": "path",
             "url": "packages/*",
             "options": {
-                "symlink": true
+                "symlink": true,
+                "versions": {
+                    "thesis/grpc-client": "0.1.x-dev",
+                    "thesis/grpc-protocol": "0.1.x-dev",
+                    "thesis/grpc-server": "0.1.x-dev"
+                }
             }
         }
     ],

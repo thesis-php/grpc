@@ -10,7 +10,6 @@ use Amp\NullCancellation;
 use Thesis\Grpc\Client\EndpointResolver;
 use Thesis\Grpc\Client\EndpointResolverListener;
 use Thesis\Grpc\Client\Internal\Connection;
-use Thesis\Grpc\Client\Internal\Http2\InterceptorComposer;
 use Thesis\Grpc\Client\Internal\Http2\StreamFactory;
 use Thesis\Grpc\Client\Invoke;
 use Thesis\Grpc\Client\LoadBalancer;
@@ -36,7 +35,6 @@ final readonly class DefaultConnection implements
         Target $target,
         EndpointResolver $resolver,
         LoadBalancerFactory $loadBalancerFactory,
-        private InterceptorComposer $interceptor,
         private StreamFactory $streams,
     ) {
         $this->deferredCancellation = new DeferredCancellation();
@@ -53,21 +51,18 @@ final readonly class DefaultConnection implements
     #[\Override]
     public function createStream(
         Invoke $invoke,
-        Metadata $md = new Metadata(),
-        Cancellation $cancellation = new NullCancellation(),
+        Metadata $md,
+        Cancellation $cancellation,
+        PickContext $pick,
     ): ClientStream {
-        $endpoint = $this->balancer->pick(new PickContext($invoke->method, $md));
+        $endpoint = $this->balancer->pick($pick);
+        $pick->exclude($endpoint);
 
-        return $this->interceptor->intercept( // @phpstan-ignore return.type
+        return $this->streams->create(
             $invoke,
+            $endpoint->address,
             $md,
             $cancellation,
-            fn(Invoke $invoke, Metadata $md, Cancellation $cancellation) => $this->streams->create(
-                $invoke,
-                $endpoint->address,
-                $md,
-                $cancellation,
-            ),
         );
     }
 

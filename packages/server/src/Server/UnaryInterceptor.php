@@ -8,26 +8,26 @@ use Amp\Cancellation;
 use Amp\CancelledException;
 use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
-use Thesis\Grpc\ServerStream;
 
 /**
  * @api
  */
-interface Interceptor
+interface UnaryInterceptor
 {
     /**
      * @template In of object
      * @template Out of object
-     * @param ServerStream<In, Out> $stream
-     * @param callable(ServerStream<In, Out>, StreamInfo, Metadata, Cancellation): void $next
+     * @param In $request
+     * @param callable(In, StreamInfo, Metadata, Cancellation): Out $handler
+     * @return Out
      * @throws InvokeError
      * @throws CancelledException
      */
-    public function intercept(
-        ServerStream $stream,
+    public function interceptUnary(
+        object $request,
         StreamInfo $info,
         Metadata $md,
         Cancellation $cancellation,
-        callable $next,
-    ): void;
+        callable $handler,
+    ): object;
 }

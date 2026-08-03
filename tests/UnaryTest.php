@@ -32,7 +32,7 @@ final class UnaryTest extends TestCase
     {
         $this->server = new Server\Builder()
             ->withServices(new EchoServiceServerRegistry(new UnaryEchoServer()))
-            ->withInterceptors(new AuthorizationServerInterceptor('secret'))
+            ->withUnaryInterceptors(new AuthorizationServerInterceptor('secret'))
             ->build();
 
         $this->server->start();
@@ -47,7 +47,7 @@ final class UnaryTest extends TestCase
     {
         $client = new EchoServiceClient(
             new Client\Builder()
-            ->withInterceptors(new AuthorizationClientInterceptor('secret'))
+            ->withUnaryInterceptors(new AuthorizationClientInterceptor('secret'))
             ->build(),
         );
 
@@ -70,7 +70,7 @@ final class UnaryTest extends TestCase
     {
         $client = new EchoServiceClient(
             new Client\Builder()
-            ->withInterceptors(new AuthorizationClientInterceptor('secret'))
+            ->withUnaryInterceptors(new AuthorizationClientInterceptor('secret'))
             ->build(),
         );
 
@@ -78,17 +78,18 @@ final class UnaryTest extends TestCase
         self::assertSame($sentence, $response->sentence);
     }
 
-    public function testWrapClientStream(): void
+    public function testRewriteRequest(): void
     {
         $client = new EchoServiceClient(
             new Client\Builder()
-            ->withInterceptors(
+            ->withUnaryInterceptors(
                 new AuthorizationClientInterceptor('secret'),
-                new Client\CallableInterceptor(static fn(Invoke $invoke, Metadata $metadata, Cancellation $cancellation, callable $next): ClientStream => new MitmClientStream($next(
+                new Client\CallableUnaryInterceptor(static fn(object $request, Invoke $invoke, Metadata $metadata, Cancellation $cancellation, callable $invoker): object => $invoker(
+                    new EchoRequest('pong'),
                     $invoke,
                     $metadata,
                     $cancellation,
-                ))),
+                )),
             )
             ->build(),
         );
@@ -101,7 +102,7 @@ final class UnaryTest extends TestCase
     {
         $client = new EchoServiceClient(
             new Client\Builder()
-            ->withInterceptors(new AuthorizationClientInterceptor('secret'))
+            ->withUnaryInterceptors(new AuthorizationClientInterceptor('secret'))
             ->build(),
         );
 
@@ -140,22 +141,5 @@ final readonly class UnaryEchoServer implements EchoServiceServer
         $sentence = $md->value('server-sentence') ?? $request->sentence;
 
         return new EchoResponse($sentence);
-    }
-}
-
-/**
- * @template-extends Client\DecoratedStream<EchoRequest, EchoResponse>
- */
-final readonly class MitmClientStream extends Client\DecoratedStream
-{
-    public function __construct(ClientStream $stream)
-    {
-        parent::__construct($stream);
-    }
-
-    #[\Override]
-    public function send(object $message): void
-    {
-        parent::send(new EchoRequest('pong'));
     }
 }

@@ -13,7 +13,7 @@ use File\Api\V1\FileServiceServerRegistry;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Thesis\Grpc\Client\Internal\AmphpHttpClient;
-use Thesis\Grpc\Server\CallableInterceptor;
+use Thesis\Grpc\Server\CallableStreamInterceptor;
 use Thesis\Grpc\Server\ClientStreamHandler;
 use Thesis\Grpc\Server\Internal\AmphpHttpServer;
 use Thesis\Grpc\Server\StreamInfo;
@@ -29,7 +29,7 @@ final class ClientStreamTest extends TestCase
     {
         $this->server = new Server\Builder()
             ->withServices(new FileServiceServerRegistry(new ClientStreamServer()))
-            ->withInterceptors(new CallableInterceptor(static function (
+            ->withStreamInterceptors(new CallableStreamInterceptor(static function (
                 ServerStream $stream,
                 StreamInfo $info,
                 Metadata $md,

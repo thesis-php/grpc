@@ -9,13 +9,28 @@ use Thesis\Grpc\Metadata;
 /**
  * @api
  */
-final readonly class PickContext
+final class PickContext
 {
     /**
      * @param non-empty-string $methodName
+     * @param list<Endpoint> $excluded endpoints that already failed this call and should be skipped if possible
      */
     public function __construct(
-        public string $methodName,
-        public Metadata $metadata,
+        public readonly string $methodName,
+        public readonly Metadata $metadata,
+        private array $excluded = [],
     ) {}
+
+    public function excluded(Endpoint $endpoint): bool
+    {
+        return array_any($this->excluded, $endpoint->equals(...));
+    }
+
+    /**
+     * Records the endpoint the transport just picked so a subsequent retry skips it.
+     */
+    public function exclude(Endpoint $endpoint): void
+    {
+        $this->excluded[] = $endpoint;
+    }
 }

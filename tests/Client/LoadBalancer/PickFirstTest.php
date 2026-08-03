@@ -118,6 +118,34 @@ final class PickFirstTest extends TestCase
         ];
     }
 
+    public function testPickFailsOverToALiveEndpointWhenPinnedIsExcluded(): void
+    {
+        $a = new Endpoint(new Address('10.0.0.1:50051'));
+        $b = new Endpoint(new Address('10.0.0.2:50051'));
+        $c = new Endpoint(new Address('10.0.0.3:50051'));
+
+        $balancer = new PickFirstFactory()->create([$a, $b, $c]);
+        $pinned = $balancer->pick(self::context());
+
+        $failedOver = $balancer->pick(new PickContext('/test.Service/Method', new Metadata(), [$pinned]));
+
+        self::assertFalse($pinned->equals($failedOver));
+        self::assertTrue($failedOver->equals($balancer->pick(self::context())));
+    }
+
+    public function testPickStaysPinnedWhenEveryEndpointIsExcluded(): void
+    {
+        $a = new Endpoint(new Address('10.0.0.1:50051'));
+        $b = new Endpoint(new Address('10.0.0.2:50051'));
+
+        $balancer = new PickFirstFactory()->create([$a, $b]);
+        $pinned = $balancer->pick(self::context());
+
+        $picked = $balancer->pick(new PickContext('/test.Service/Method', new Metadata(), [$a, $b]));
+
+        self::assertTrue($pinned->equals($picked));
+    }
+
     private static function context(): PickContext
     {
         return new PickContext('/test.Service/Method', new Metadata());

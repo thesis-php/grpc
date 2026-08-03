@@ -7,6 +7,7 @@ namespace Thesis\Grpc\Client\Internal;
 use Amp\Cancellation;
 use Amp\NullCancellation;
 use Thesis\Grpc\Client\Invoke;
+use Thesis\Grpc\Client\PickContext;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Metadata;
 
@@ -23,8 +24,9 @@ interface Connection
      */
     public function createStream(
         Invoke $invoke,
-        Metadata $md = new Metadata(),
-        Cancellation $cancellation = new NullCancellation(),
+        Metadata $md,
+        Cancellation $cancellation,
+        PickContext $pick,
     ): ClientStream;
 
     public function close(Cancellation $cancellation = new NullCancellation()): void;

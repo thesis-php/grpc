@@ -16,11 +16,16 @@ use Amp\Http\Server\Trailers;
 use Amp\TimeoutCancellation;
 use Google\Rpc;
 use Thesis\Grpc\Metadata;
-use Thesis\Grpc\Server\Interceptor;
+use Thesis\Grpc\Server\Internal\StreamHandleInterceptor;
+use Thesis\Grpc\Server\Internal\StreamInterceptorComposer;
+use Thesis\Grpc\Server\Internal\UnaryInterceptorComposer;
 use Thesis\Grpc\Server\MessageCompressorFactory;
 use Thesis\Grpc\Server\MessageEncoderFactory;
 use Thesis\Grpc\Server\Service;
 use Thesis\Grpc\Server\StreamInfo;
+use Thesis\Grpc\Server\StreamInterceptor;
+use Thesis\Grpc\Server\UnaryHandler;
+use Thesis\Grpc\Server\UnaryInterceptor;
 use Thesis\Grpc\ServerStream;
 use Thesis\Grpc\ServiceRegistrar;
 use Thesis\Grpc\UnimplementedException;
@@ -37,26 +42,35 @@ final class ServerRequestHandler implements
 {
     private readonly Router $router;
 
-    private readonly InterceptorComposer $interceptor;
+    /**
+     * Always-on transport lifecycle: seeds the OK trailer, maps handler exceptions to a
+     * gRPC status, and closes the stream — for every RPC type.
+     */
+    private readonly StreamHandleInterceptor $lifecycle;
+
+    private readonly UnaryInterceptorComposer $unary;
+
+    private readonly StreamInterceptorComposer $stream;
 
     /** @var \WeakMap<ServerStream<*, *>, HandlerEntry> */
     private \WeakMap $pending;
 
     /**
-     * @param list<Interceptor> $interceptors
+     * @param list<UnaryInterceptor> $unaryInterceptors
+     * @param list<StreamInterceptor> $streamInterceptors
      */
     public function __construct(
         private readonly MessageEncoderFactory $encoderFactory,
         private readonly MessageCompressorFactory $compressorFactory,
         Protobuf\Encoder $protobuf,
-        array $interceptors,
+        array $unaryInterceptors,
+        array $streamInterceptors,
     ) {
         $this->pending = new \WeakMap();
         $this->router = new Router();
-        $this->interceptor = new InterceptorComposer([
-            new StreamHandleInterceptor($protobuf),
-            ...$interceptors,
-        ]);
+        $this->lifecycle = new StreamHandleInterceptor($protobuf);
+        $this->unary = new UnaryInterceptorComposer($unaryInterceptors);
+        $this->stream = new StreamInterceptorComposer($streamInterceptors);
     }
 
     #[\Override]
@@ -143,28 +157,61 @@ final class ServerRequestHandler implements
             $streamCancellation,
         );
 
-        $handler = static fn(
-            ServerStream $stream,
-            StreamInfo $info,
-            Metadata $md,
-            Cancellation $cancellation,
-        ) => $rpc->handler->handle(
-            $stream,
-            $md,
-            $cancellation,
-        );
+        $info = new StreamInfo($rpc->handle->method, $rpc->type);
+        $rpcHandler = $rpc->handler;
+
+        $terminal = match (true) {
+            $rpcHandler instanceof UnaryHandler => function (
+                ServerStream $stream,
+                StreamInfo $info,
+                Metadata $md,
+                Cancellation $cancellation,
+            ) use ($rpcHandler): void {
+                $response = $this->unary->intercept(
+                    $stream->receive(),
+                    $info,
+                    $md,
+                    $cancellation,
+                    static fn(
+                        object $request,
+                        StreamInfo $info,
+                        Metadata $md,
+                        Cancellation $cancellation,
+                    ): object => $rpcHandler->invoke($request, $md, $cancellation),
+                );
+
+                $stream->send($response);
+                $stream->close();
+            },
+            default => function (
+                ServerStream $stream,
+                StreamInfo $info,
+                Metadata $md,
+                Cancellation $cancellation,
+            ) use ($rpcHandler): void {
+                $this->stream->intercept(
+                    $stream,
+                    $info,
+                    $md,
+                    $cancellation,
+                    static fn(
+                        ServerStream $stream,
+                        StreamInfo $info,
+                        Metadata $md,
+                        Cancellation $cancellation,
+                    ) => $rpcHandler->handle($stream, $md, $cancellation),
+                );
+            },
+        };
 
         /** @var Future<void> $future */
         $future = async(
-            $this->interceptor->intercept(...),
+            $this->lifecycle->interceptStream(...),
             $stream,
-            new StreamInfo(
-                $rpc->handle->method,
-                $rpc->type,
-            ),
+            $info,
             $md,
             $streamCancellation,
-            $handler,
+            $terminal,
         );
 
         $future->ignore();

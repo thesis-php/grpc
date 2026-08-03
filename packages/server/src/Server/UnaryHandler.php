@@ -6,15 +6,13 @@ namespace Thesis\Grpc\Server;
 
 use Amp\Cancellation;
 use Thesis\Grpc\Metadata;
-use Thesis\Grpc\ServerStream;
 
 /**
  * @api
  * @template TRequest of object
  * @template TResponse of object
- * @template-implements Handler<TRequest, TResponse>
  */
-final readonly class UnaryHandler implements Handler
+final readonly class UnaryHandler
 {
     /**
      * @param \Closure(TRequest, Metadata, Cancellation): TResponse $handler
@@ -23,12 +21,12 @@ final readonly class UnaryHandler implements Handler
         private \Closure $handler,
     ) {}
 
-    #[\Override]
-    public function handle(ServerStream $stream, Metadata $md, Cancellation $cancellation): void
+    /**
+     * @param TRequest $request
+     * @return TResponse
+     */
+    public function invoke(object $request, Metadata $md, Cancellation $cancellation): object
     {
-        $request = $stream->receive();
-        $response = ($this->handler)($request, $md, $cancellation);
-        $stream->send($response);
-        $stream->close();
+        return ($this->handler)($request, $md, $cancellation);
     }
 }

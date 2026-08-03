@@ -9,6 +9,7 @@ use Amp\Http\Client\Connection\DefaultConnectionFactory;
 use Amp\Http\Client\DelegateHttpClient;
 use Amp\Http\Client\HttpClientBuilder;
 use Amp\Socket\ConnectContext;
+use Amp\Socket\DnsSocketConnector;
 use Amp\Socket\SocketConnector;
 use Thesis\Grpc\Client;
 use Thesis\Grpc\Client\Internal\Connection;
@@ -37,8 +38,11 @@ final class Builder
 
     private ?DelegateHttpClient $httpclient = null;
 
-    /** @var list<Interceptor> */
-    private array $interceptors = [];
+    /** @var list<UnaryInterceptor> */
+    private array $unaryInterceptors = [];
+
+    /** @var list<StreamInterceptor> */
+    private array $streamInterceptors = [];
 
     private ?TransportCredentials $credentials = null;
 
@@ -116,11 +120,25 @@ final class Builder
     /**
      * @no-named-arguments
      */
-    public function withInterceptors(Interceptor ...$interceptors): self
+    public function withUnaryInterceptors(UnaryInterceptor ...$interceptors): self
     {
         $builder = clone $this;
-        $builder->interceptors = [
-            ...$builder->interceptors,
+        $builder->unaryInterceptors = [
+            ...$builder->unaryInterceptors,
+            ...$interceptors,
+        ];
+
+        return $builder;
+    }
+
+    /**
+     * @no-named-arguments
+     */
+    public function withStreamInterceptors(StreamInterceptor ...$interceptors): self
+    {
+        $builder = clone $this;
+        $builder->streamInterceptors = [
+            ...$builder->streamInterceptors,
             ...$interceptors,
         ];
 
@@ -218,19 +236,28 @@ final class Builder
             Scheme::Ipv4, Scheme::Ipv6, Scheme::Unix => new EndpointResolver\StaticResolver(),
         };
 
-        $interceptor = new Http2\InterceptorComposer([
-            ...$this->interceptors,
-            new Http2\AppendControlMetadataInterceptor(
-                $encoder->name(),
-                $compressor->name(),
-            ),
+        $controlMetadata = new Internal\AppendControlMetadataInterceptor(
+            $encoder->name(),
+            $compressor->name(),
+        );
+
+        // Control metadata sits innermost (closest to the transport) so every user
+        // interceptor runs before the HTTP/2 headers are finalised.
+        $unary = new Internal\UnaryInterceptorComposer([
+            ...$this->unaryInterceptors,
+            $controlMetadata,
+        ]);
+
+        $stream = new Internal\StreamInterceptorComposer([
+            ...$this->streamInterceptors,
+            $controlMetadata,
         ]);
 
         $httpclient = $this->httpclient ?? new HttpClientBuilder()
             ->usingPool(ConnectionLimitingPool::byAuthority(
                 $this->connectionLimit,
                 new DefaultConnectionFactory(
-                    $this->connector,
+                    $this->connector ?? new DnsSocketConnector(),
                     new ConnectContext()
                         ->withConnectTimeout($this->connectTimeout)
                         ->withTlsContext($tlsContext),
@@ -247,7 +274,6 @@ final class Builder
                     target: $target,
                     resolver: $resolver,
                     loadBalancerFactory: $loadBalancerFactory,
-                    interceptor: $interceptor,
                     streams: new Http2\StreamFactory(
                         http: $httpclient,
                         uri: $uriFactory,
@@ -259,6 +285,8 @@ final class Builder
                     ),
                 ),
             ),
+            $unary,
+            $stream,
         );
     }
 }
