@@ -95,7 +95,7 @@ final readonly class StreamFactory
         return new ConcurrentClientStream(
             responseFuture: $response,
             send: $send,
-            decode: fn(Response $response) => $this->codec->decode($response->getBody(), $invoke->type, $cancellation),
+            decode: fn(Response $response) => $this->codec->decode($response->getBody(), $invoke->output, $cancellation),
             errors: $this->errors,
             complete: $deferred->getFuture(),
         );

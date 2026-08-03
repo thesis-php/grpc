@@ -11,6 +11,7 @@ use Thesis\Grpc\Client\Address;
 use Thesis\Grpc\Client\Internal\Http2\UriFactory;
 use Thesis\Grpc\Client\Internal\HttpScheme;
 use Thesis\Grpc\Client\Invoke;
+use Thesis\Grpc\RpcType;
 
 #[CoversClass(UriFactory::class)]
 final class UriFactoryTest extends TestCase
@@ -51,7 +52,7 @@ final class UriFactoryTest extends TestCase
         string $uri,
     ): void {
         $factory = new UriFactory(HttpScheme::from($scheme));
-        $invoke = new Invoke($method, \stdClass::class);
+        $invoke = new Invoke($method, \stdClass::class, RpcType::Unary);
 
         self::assertSame($uri, $factory->create(new Address($address), $invoke));
     }
