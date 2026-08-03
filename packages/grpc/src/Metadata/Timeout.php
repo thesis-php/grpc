@@ -128,7 +128,7 @@ final readonly class Timeout implements
 }
 
 /**
- * @internal
+ * @api
  */
 function parseTimeout(Metadata $md): ?Timeout
 {
