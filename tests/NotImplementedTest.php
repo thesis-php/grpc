@@ -45,7 +45,7 @@ final class NotImplementedTest extends TestCase
         $client = new Client\Builder()->build();
 
         $this->expectExceptionMessage('A grpc error with status code "UNIMPLEMENTED" and message "Malformed method name: /" occurred');
-        $client->invoke(new EchoRequest(), new Invoke('/', EchoResponse::class));
+        $client->invoke(new EchoRequest(), new Invoke('/', EchoResponse::class, RpcType::Unary));
     }
 
     public function testServiceNotImplemented(): void
@@ -53,7 +53,7 @@ final class NotImplementedTest extends TestCase
         $client = new Client\Builder()->build();
 
         $this->expectExceptionMessage('A grpc error with status code "UNIMPLEMENTED" and message "Unknown service echos.api.v2.EchoService" occurred');
-        $client->invoke(new EchoRequest(), new Invoke('/echos.api.v2.EchoService/Echo', EchoResponse::class));
+        $client->invoke(new EchoRequest(), new Invoke('/echos.api.v2.EchoService/Echo', EchoResponse::class, RpcType::Unary));
     }
 
     public function testMethodNotImplemented(): void
@@ -61,6 +61,6 @@ final class NotImplementedTest extends TestCase
         $client = new Client\Builder()->build();
 
         $this->expectExceptionMessage('A grpc error with status code "UNIMPLEMENTED" and message "Unknown method Ping for service echos.api.v1.EchoService" occurred');
-        $client->invoke(new EchoRequest(), new Invoke('/echos.api.v1.EchoService/Ping', EchoResponse::class));
+        $client->invoke(new EchoRequest(), new Invoke('/echos.api.v1.EchoService/Ping', EchoResponse::class, RpcType::Unary));
     }
 }
