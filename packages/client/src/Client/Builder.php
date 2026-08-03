@@ -236,19 +236,19 @@ final class Builder
             Scheme::Ipv4, Scheme::Ipv6, Scheme::Unix => new EndpointResolver\StaticResolver(),
         };
 
-        $controlMetadata = new Http2\AppendControlMetadataInterceptor(
+        $controlMetadata = new Internal\AppendControlMetadataInterceptor(
             $encoder->name(),
             $compressor->name(),
         );
 
         // Control metadata sits innermost (closest to the transport) so every user
         // interceptor runs before the HTTP/2 headers are finalised.
-        $unary = new Http2\UnaryInterceptorComposer([
+        $unary = new Internal\UnaryInterceptorComposer([
             ...$this->unaryInterceptors,
             $controlMetadata,
         ]);
 
-        $stream = new Http2\StreamInterceptorComposer([
+        $stream = new Internal\StreamInterceptorComposer([
             ...$this->streamInterceptors,
             $controlMetadata,
         ]);

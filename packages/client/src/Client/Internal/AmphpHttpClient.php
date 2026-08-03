@@ -8,8 +8,6 @@ use Amp\Cancellation;
 use Amp\NullCancellation;
 use Google\Rpc\Code;
 use Thesis\Grpc\Client;
-use Thesis\Grpc\Client\Internal\Http2\StreamInterceptorComposer;
-use Thesis\Grpc\Client\Internal\Http2\UnaryInterceptorComposer;
 use Thesis\Grpc\Client\PickContext;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\GrpcException;

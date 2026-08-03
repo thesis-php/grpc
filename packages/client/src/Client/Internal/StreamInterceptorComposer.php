@@ -2,20 +2,21 @@
 
 declare(strict_types=1);
 
-namespace Thesis\Grpc\Client\Internal\Http2;
+namespace Thesis\Grpc\Client\Internal;
 
 use Amp\Cancellation;
 use Thesis\Grpc\Client\Invoke;
-use Thesis\Grpc\Client\UnaryInterceptor;
+use Thesis\Grpc\Client\StreamInterceptor;
+use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Metadata;
 
 /**
  * @internal
  */
-final readonly class UnaryInterceptorComposer
+final readonly class StreamInterceptorComposer
 {
     /**
-     * @param list<UnaryInterceptor> $interceptors
+     * @param list<StreamInterceptor> $interceptors
      */
     public function __construct(
         private array $interceptors,
@@ -24,36 +25,32 @@ final readonly class UnaryInterceptorComposer
     /**
      * @template In of object
      * @template Out of object
-     * @param In $request
      * @param Invoke<In, Out> $invoke
-     * @param callable(In, Invoke<In, Out>, Metadata, Cancellation): Out $invoker
-     * @return Out
+     * @param callable(Invoke<In, Out>, Metadata, Cancellation): ClientStream<In, Out> $newStream
+     * @return ClientStream<In, Out>
      */
     public function intercept(
-        object $request,
         Invoke $invoke,
         Metadata $md,
         Cancellation $cancellation,
-        callable $invoker,
-    ): object {
+        callable $newStream,
+    ): ClientStream {
         $handler = array_reduce(
             array_reverse($this->interceptors),
-            static fn(callable $stack, UnaryInterceptor $interceptor) => static fn(
-                object $request,
+            static fn(callable $stack, StreamInterceptor $interceptor) => static fn(
                 Invoke $invoke,
                 Metadata $md,
                 Cancellation $cancellation,
-            ) => $interceptor->interceptUnary(
-                $request,
+            ) => $interceptor->interceptStream(
                 $invoke,
                 $md,
                 $cancellation,
                 $stack(...), // @phpstan-ignore argument.type
             ),
-            $invoker,
+            $newStream,
         );
 
-        /** @var Out */
-        return $handler($request, $invoke, $md, $cancellation);
+        /** @var ClientStream<In, Out> */
+        return $handler($invoke, $md, $cancellation);
     }
 }

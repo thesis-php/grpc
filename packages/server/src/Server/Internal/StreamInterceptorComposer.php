@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-namespace Thesis\Grpc\Server\Internal\Http2;
+namespace Thesis\Grpc\Server\Internal;
 
 use Amp\Cancellation;
 use Amp\CancelledException;
