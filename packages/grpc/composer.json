@@ -23,7 +23,7 @@
         "amphp/amp": "^3.1",
         "amphp/byte-stream": "^2.1",
         "amphp/pipeline": "^1.2",
-        "revolt/event-loop": "1.0.8",
+        "revolt/event-loop": "^1.0.8",
         "thesis/endian": "^0.3.3",
         "thesis/googleapis-rpc-types": "^0.1.6",
         "thesis/package-version": "^0.1.2",
