@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Thesis\Grpc;
 
 use Amp\Cancellation;
-use BcMath\Number;
 use Google\Protobuf\Timestamp;
 use Google\Rpc\Code;
 use PHPUnit\Framework\Attributes\CoversClass;
@@ -51,8 +50,8 @@ final class ServerStreamTest extends TestCase
         self::assertCount(2, $paymentEvents);
         self::assertEquals(
             [
-                new Event('payment_finished', '{"id": 1}', new Timestamp(new Number(1_771_782_096))),
-                new Event('payment_rejected', '{"id": 2}', new Timestamp(new Number(1_771_782_097))),
+                new Event('payment_finished', '{"id": 1}', new Timestamp(1_771_782_096)),
+                new Event('payment_rejected', '{"id": 2}', new Timestamp(1_771_782_097)),
             ],
             $paymentEvents,
         );
@@ -64,7 +63,7 @@ final class ServerStreamTest extends TestCase
         self::assertCount(1, $subscriptionEvents);
         self::assertEquals(
             [
-                new Event('subscription_terminated', '{"id": 1}', new Timestamp(new Number(1_771_782_099))),
+                new Event('subscription_terminated', '{"id": 1}', new Timestamp(1_771_782_099)),
             ],
             $subscriptionEvents,
         );
@@ -85,11 +84,11 @@ final readonly class TopicServer implements TopicServiceServer
     ): iterable {
         $events = [
             'payments' => [
-                new Event('payment_finished', '{"id": 1}', new Timestamp(new Number(1_771_782_096))),
-                new Event('payment_rejected', '{"id": 2}', new Timestamp(new Number(1_771_782_097))),
+                new Event('payment_finished', '{"id": 1}', new Timestamp(1_771_782_096)),
+                new Event('payment_rejected', '{"id": 2}', new Timestamp(1_771_782_097)),
             ],
             'subscriptions' => [
-                new Event('subscription_terminated', '{"id": 1}', new Timestamp(new Number(1_771_782_099))),
+                new Event('subscription_terminated', '{"id": 1}', new Timestamp(1_771_782_099)),
             ],
         ];
 
