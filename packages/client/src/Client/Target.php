@@ -28,25 +28,33 @@ final readonly class Target
                 }
 
                 return match ($scheme) {
-                    Scheme::Dns => self::parseDns($addr, $target, $scheme),
+                    Scheme::Dns => self::parseDns($addr, $target),
                     Scheme::Passthrough => self::parsePassthrough($addr, $target),
-                    Scheme::Ipv4, Scheme::Ipv6 => new self($scheme, self::parseAddresses($addr, $target), opaque: $addr),
-                    Scheme::Unix => new self($scheme, [self::parseUnix($addr, $target)], opaque: $addr),
+                    Scheme::Ipv4, Scheme::Ipv6 => new self($scheme->value, self::parseAddresses($addr, $target), opaque: $addr),
+                    Scheme::Unix => new self($scheme->value, [self::parseUnix($addr, $target)], opaque: $addr),
                 };
             }
         }
 
-        return new self(Scheme::Dns, self::parseAddresses($target), opaque: $target);
+        // A custom scheme in URI form ("<scheme>://[authority]/<endpoint>") selects
+        // a user-registered resolver. Only the "//" form is treated as a scheme, so
+        // a bare "host:port" is still resolved as a DNS target.
+        if (preg_match('#^([a-z][a-z0-9+.\-]*)://#', $target, $matches) === 1) {
+            return self::parseCustom($matches[1], $target);
+        }
+
+        return new self(Scheme::Dns->value, self::parseAddresses($target), opaque: $target);
     }
 
     /**
      * @internal use {@see Target::parse()} instead
+     * @param non-empty-string $scheme
      * @param non-empty-list<TargetAddress> $addresses
      * @param non-empty-string $opaque Raw value after scheme prefix
      * @param ?non-empty-string $authority DNS server address (only for dns://authority/host form)
      */
     public function __construct(
-        public Scheme $scheme,
+        public string $scheme,
         public array $addresses,
         public string $opaque,
         public ?string $authority = null,
@@ -57,7 +65,7 @@ final readonly class Target
      * @param non-empty-string $target
      * @throws InvalidTarget
      */
-    private static function parseDns(string $addr, string $target, Scheme $scheme): self
+    private static function parseDns(string $addr, string $target): self
     {
         $opaque = $addr;
         $authority = null;
@@ -81,10 +89,42 @@ final readonly class Target
         }
 
         return new self(
-            $scheme,
+            Scheme::Dns->value,
             self::parseAddresses($addr, $target),
             $opaque,
             $authority,
+        );
+    }
+
+    /**
+     * A scheme with no built-in parser: "<scheme>://[authority]/<endpoint>". The
+     * endpoint is handed to a user-registered resolver as {@see self::$opaque}.
+     *
+     * @param non-empty-string $scheme
+     * @param non-empty-string $target
+     * @throws InvalidTarget
+     */
+    private static function parseCustom(string $scheme, string $target): self
+    {
+        $rest = substr($target, \strlen($scheme) + 3);
+
+        $slash = strpos($rest, '/');
+        if ($slash === false) {
+            throw new InvalidTarget($target);
+        }
+
+        $authority = substr($rest, 0, $slash);
+        $endpoint = substr($rest, $slash + 1);
+
+        if ($endpoint === '') {
+            throw new InvalidTarget($target);
+        }
+
+        return new self(
+            $scheme,
+            [new TargetAddress($endpoint, 0)],
+            $endpoint,
+            $authority !== '' ? $authority : null,
         );
     }
 
@@ -110,7 +150,7 @@ final readonly class Target
             throw new InvalidTarget($target);
         }
 
-        return new self(Scheme::Passthrough, [new TargetAddress($addr, 0)], $addr);
+        return new self(Scheme::Passthrough->value, [new TargetAddress($addr, 0)], $addr);
     }
 
     /**

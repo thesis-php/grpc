@@ -133,17 +133,6 @@ fix: fixer rector composer-normalize ## Run all fixing recipes
 check: fixer-check rector-check composer-validate composer-normalize-check deps-analyze phpstan test  ## Run all project checks
 .PHONY: check
 
-compile-stub:
-	docker run --rm \
-		--pull always \
-	    --user $(CONTAINER_USER) \
-        -v $(PWD):/workspace \
-        -w /workspace \
-        ghcr.io/thesis-php/protoc-plugin:latest \
-        --php-plugin_out=genproto \
-        protos/*.proto
-.PHONY: compile-stub
-
 compile-test-stub:
 	docker run --rm \
 		--pull always \
