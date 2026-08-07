@@ -11,7 +11,6 @@ use PHPUnit\Framework\TestCase;
 use Thesis\Grpc\Client\Address;
 use Thesis\Grpc\Client\Endpoint;
 use Thesis\Grpc\Client\EndpointResolverListener;
-use Thesis\Grpc\Client\Scheme;
 use Thesis\Grpc\Client\Target;
 use Thesis\Grpc\Client\TargetAddress;
 
@@ -41,12 +40,12 @@ final class StaticResolverTest extends TestCase
     public static function provideResolveCases(): iterable
     {
         yield 'ipv4: single address' => [
-            new Target(Scheme::Ipv4, [new TargetAddress('192.168.0.1', 50_051)], '192.168.0.1:50051'),
+            new Target('ipv4', [new TargetAddress('192.168.0.1', 50_051)], '192.168.0.1:50051'),
             [new Endpoint(new Address('192.168.0.1:50051'))],
         ];
 
         yield 'ipv4: multiple addresses' => [
-            new Target(Scheme::Ipv4, [
+            new Target('ipv4', [
                 new TargetAddress('192.168.0.1', 50_051),
                 new TargetAddress('192.168.0.2', 50_052),
             ], '192.168.0.1:50051,192.168.0.2:50052'),
@@ -57,12 +56,12 @@ final class StaticResolverTest extends TestCase
         ];
 
         yield 'ipv6: single address' => [
-            new Target(Scheme::Ipv6, [new TargetAddress('[::1]', 50_051)], '[::1]:50051'),
+            new Target('ipv6', [new TargetAddress('[::1]', 50_051)], '[::1]:50051'),
             [new Endpoint(new Address('[::1]:50051'))],
         ];
 
         yield 'unix: socket path' => [
-            new Target(Scheme::Unix, [new TargetAddress('/var/run/grpc.sock', 0)], '///var/run/grpc.sock'),
+            new Target('unix', [new TargetAddress('/var/run/grpc.sock', 0)], '///var/run/grpc.sock'),
             [new Endpoint(new Address('/var/run/grpc.sock'))],
         ];
     }

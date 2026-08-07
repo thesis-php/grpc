@@ -184,17 +184,16 @@ final readonly class RandomBalancerFactory implements LoadBalancerFactory
 
 ## Endpoint resolution
 
-Resolver is selected by target scheme. You can override resolver for a specific scheme:
+Resolver is selected by target scheme. You can override the resolver for a scheme:
 
 ```php
 use Amp\Cache\LocalCache;
 use Thesis\Grpc\Client\Builder;
 use Thesis\Grpc\Client\EndpointResolver\DnsResolver;
-use Thesis\Grpc\Client\Scheme;
 
 $client = new Builder()
     ->withHost('dns:///my-grpc-server:50051')
-    ->withEndpointResolver(Scheme::Dns, new DnsResolver(
+    ->withEndpointResolver('dns', new DnsResolver(
         cache: new LocalCache(),
         minResolveInterval: 60,
         maxResolveInterval: 600,
@@ -208,7 +207,22 @@ Default resolvers by scheme:
 - `ipv4`, `ipv6`, `unix` -> `StaticResolver`
 - `passthrough` -> `PassthroughResolver`
 
-You can also implement your own `EndpointResolver` for service discovery backends like Consul/etcd.
+### Custom schemes (service discovery)
+
+Register a resolver under any scheme to plug in a service registry such as etcd or
+Consul. The target is then `<scheme>://[authority]/<endpoint>`, and the endpoint is
+handed to the resolver as `$target->opaque`:
+
+```php
+$client = new Builder()
+    ->withEndpointResolver('etcd', new EtcdResolver($etcd, prefix: '/services/'))
+    ->withLoadBalancer(new RoundRobinFactory())
+    ->withHost('etcd:///echo')
+    ->build();
+```
+
+An `EndpointResolver` returns the current `Resolution` and may push updates over time
+through `EndpointResolverListener::onResolve()`, which the balancer picks up live.
 
 ## Error handling
 

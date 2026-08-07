@@ -66,13 +66,8 @@ final class Builder
 
     private ?LoadBalancerFactory $loadBalancerFactory = null;
 
-    /** @var \SplObjectStorage<Scheme, EndpointResolver> */
-    private \SplObjectStorage $endpointResolvers;
-
-    public function __construct()
-    {
-        $this->endpointResolvers = new \SplObjectStorage();
-    }
+    /** @var array<string, EndpointResolver> */
+    private array $endpointResolvers = [];
 
     public function withProtobuf(Decoder $decoder): self
     {
@@ -204,7 +199,7 @@ final class Builder
         return $builder;
     }
 
-    public function withEndpointResolver(Scheme $scheme, EndpointResolver $resolver): self
+    public function withEndpointResolver(string $scheme, EndpointResolver $resolver): self
     {
         $builder = clone $this;
         $builder->endpointResolvers[$scheme] = $resolver;
@@ -217,6 +212,9 @@ final class Builder
         return new self()->build();
     }
 
+    /**
+     * @throws InvalidTarget
+     */
     public function build(): Client
     {
         $target = Target::parse($this->host ?? self::DEFAULT_HOST);
@@ -230,10 +228,11 @@ final class Builder
         $transferTimeout = $this->transferTimeout;
         $inactivityTimeout = $this->inactivityTimeout;
 
-        $resolver = $this->endpointResolvers[$target->scheme] ?? match ($target->scheme) {
+        $resolver = $this->endpointResolvers[$target->scheme] ?? match (Scheme::tryFrom($target->scheme)) {
             Scheme::Dns => new EndpointResolver\DnsResolver(),
             Scheme::Passthrough => new EndpointResolver\PassthroughResolver(),
             Scheme::Ipv4, Scheme::Ipv6, Scheme::Unix => new EndpointResolver\StaticResolver(),
+            null => throw new InvalidTarget($this->host ?? ''),
         };
 
         $controlMetadata = new Internal\AppendControlMetadataInterceptor(
