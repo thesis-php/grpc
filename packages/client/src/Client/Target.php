@@ -48,6 +48,7 @@ final readonly class Target
 
     /**
      * @internal use {@see Target::parse()} instead
+     * @param non-empty-string $scheme
      * @param non-empty-list<TargetAddress> $addresses
      * @param non-empty-string $opaque Raw value after scheme prefix
      * @param ?non-empty-string $authority DNS server address (only for dns://authority/host form)
