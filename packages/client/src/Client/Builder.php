@@ -141,6 +141,26 @@ final class Builder
     }
 
     /**
+     * @no-named-arguments
+     */
+    public function withInterceptors(UnaryInterceptor|StreamInterceptor ...$interceptors): self
+    {
+        $builder = clone $this;
+
+        foreach ($interceptors as $interceptor) {
+            if ($interceptor instanceof UnaryInterceptor) {
+                $builder = $builder->withUnaryInterceptors($interceptor);
+            }
+
+            if ($interceptor instanceof StreamInterceptor) {
+                $builder = $builder->withStreamInterceptors($interceptor);
+            }
+        }
+
+        return $builder;
+    }
+
+    /**
      * @param positive-int $connectionLimit
      */
     public function withConnectionLimit(int $connectionLimit): self

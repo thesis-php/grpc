@@ -284,8 +284,7 @@ final readonly class ClientAuthInterceptor implements UnaryInterceptor, StreamIn
 $auth = new ClientAuthInterceptor();
 
 $client = new Client\Builder()
-    ->withUnaryInterceptors($auth)
-    ->withStreamInterceptors($auth)
+    ->withInterceptors($auth)
     ->build();
 ```
 

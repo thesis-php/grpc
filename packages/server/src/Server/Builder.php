@@ -190,6 +190,26 @@ final class Builder
     /**
      * @no-named-arguments
      */
+    public function withInterceptors(UnaryInterceptor|StreamInterceptor ...$interceptors): self
+    {
+        $builder = clone $this;
+
+        foreach ($interceptors as $interceptor) {
+            if ($interceptor instanceof UnaryInterceptor) {
+                $builder = $builder->withUnaryInterceptors($interceptor);
+            }
+
+            if ($interceptor instanceof StreamInterceptor) {
+                $builder = $builder->withStreamInterceptors($interceptor);
+            }
+        }
+
+        return $builder;
+    }
+
+    /**
+     * @no-named-arguments
+     */
     public function withServices(ServiceRegistry ...$services): self
     {
         $builder = clone $this;
