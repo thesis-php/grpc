@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc\Client\Internal\Http2;
 
-use Google\Rpc;
+use Thesis\Google\Rpc;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Status;

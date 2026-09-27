@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc\Metadata;
 
-use Google\Rpc;
+use Thesis\Google\Rpc;
 use Thesis\Grpc\Metadata;
 
 /**

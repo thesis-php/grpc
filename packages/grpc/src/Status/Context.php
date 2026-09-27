@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc\Status;
 
-use Google\Protobuf;
-use Google\Rpc;
+use Thesis\Google\Protobuf;
+use Thesis\Google\Rpc;
 use Thesis\Grpc\Metadata;
 use Thesis\Protobuf\Decoder;
 use Thesis\Protobuf\Encoder;
