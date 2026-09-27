@@ -5,10 +5,10 @@ declare(strict_types=1);
 namespace Thesis\Grpc;
 
 use Amp\Cancellation;
-use Google\Protobuf\Timestamp;
-use Google\Rpc\Code;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Thesis\Google\Protobuf\Timestamp;
+use Thesis\Google\Rpc\Code;
 use Thesis\Grpc\Client\Internal\AmphpHttpClient;
 use Thesis\Grpc\Server\Internal\AmphpHttpServer;
 use Thesis\Grpc\Server\ServerStreamHandler;

@@ -34,10 +34,10 @@
         "psr/log": "^3.0",
         "revolt/event-loop": "^1.0.8",
         "thesis/endian": "^0.3.3",
-        "thesis/googleapis-rpc-types": "^0.2",
+        "thesis/googleapis-rpc-types": "^0.3",
         "thesis/package-version": "^0.1.2",
         "thesis/protobuf": "^0.2",
-        "thesis/protobuf-known-types": "^0.2"
+        "thesis/protobuf-known-types": "^0.3.1"
     },
     "require-dev": {
         "ext-bcmath": "*",
@@ -55,9 +55,9 @@
             "options": {
                 "symlink": true,
                 "versions": {
-                    "thesis/grpc-client": "0.2.x-dev",
-                    "thesis/grpc-protocol": "0.2.x-dev",
-                    "thesis/grpc-server": "0.2.x-dev"
+                    "thesis/grpc-client": "0.3.x-dev",
+                    "thesis/grpc-protocol": "0.3.x-dev",
+                    "thesis/grpc-server": "0.3.x-dev"
                 }
             }
         }

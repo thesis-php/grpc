@@ -6,7 +6,7 @@ namespace Thesis\Grpc\Server\Internal;
 
 use Amp\Cancellation;
 use Amp\CancelledException;
-use Google\Rpc;
+use Thesis\Google\Rpc;
 use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
 use Thesis\Grpc\Server\StreamInfo;

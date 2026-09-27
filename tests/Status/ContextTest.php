@@ -4,11 +4,11 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc\Status;
 
-use Google\Rpc;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\CoversFunction;
 use PHPUnit\Framework\Attributes\TestWith;
 use PHPUnit\Framework\TestCase;
+use Thesis\Google\Rpc;
 use Thesis\Grpc\Metadata;
 use Thesis\Protobuf\Decoder;
 use Thesis\Protobuf\Encoder;

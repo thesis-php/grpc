@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc;
 
-use Google\Rpc\Code;
+use Thesis\Google\Rpc\Code;
 
 /**
  * @api

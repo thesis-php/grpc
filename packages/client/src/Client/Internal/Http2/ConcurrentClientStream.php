@@ -9,7 +9,7 @@ use Amp\Future;
 use Amp\Http\Client\Response;
 use Amp\NullCancellation;
 use Amp\Pipeline;
-use Google\Rpc\Code;
+use Thesis\Google\Rpc\Code;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Exception\ClientStreamIsClosed;
 use Thesis\Grpc\InvokeError;

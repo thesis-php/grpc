@@ -14,7 +14,7 @@ use Amp\Http\Server\RequestHandler;
 use Amp\Http\Server\Response;
 use Amp\Http\Server\Trailers;
 use Amp\TimeoutCancellation;
-use Google\Rpc;
+use Thesis\Google\Rpc;
 use Thesis\Grpc\Metadata;
 use Thesis\Grpc\Server\Internal\StreamHandleInterceptor;
 use Thesis\Grpc\Server\Internal\StreamInterceptorComposer;

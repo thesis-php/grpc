@@ -6,7 +6,7 @@ namespace Thesis\Grpc\Client\Internal;
 
 use Amp\Cancellation;
 use Amp\NullCancellation;
-use Google\Rpc\Code;
+use Thesis\Google\Rpc\Code;
 use Thesis\Grpc\Client;
 use Thesis\Grpc\Client\PickContext;
 use Thesis\Grpc\ClientStream;

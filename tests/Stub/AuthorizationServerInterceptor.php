@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Thesis\Grpc\Stub;
 
 use Amp\Cancellation;
-use Google\Rpc\Code;
+use Thesis\Google\Rpc\Code;
 use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
 use Thesis\Grpc\Server\StreamInfo;
