@@ -5,11 +5,13 @@ declare(strict_types=1);
 namespace Thesis\Grpc\Client\Internal\Http2;
 
 use Amp\Cancellation;
+use Amp\CancelledException;
 use Amp\Future;
 use Amp\Http\Client\Response;
 use Amp\NullCancellation;
 use Amp\Pipeline;
 use Thesis\Google\Rpc\Code;
+use Thesis\Grpc\Client\Internal\CancellationError;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Exception\ClientStreamIsClosed;
 use Thesis\Grpc\InvokeError;
@@ -58,17 +60,25 @@ final class ConcurrentClientStream implements ClientStream
     #[\Override]
     public function receive(): object
     {
-        if (!$this->recv->continue()) {
-            throw $this->errors->obtain($this) ?? new InvokeError(Code::UNKNOWN);
-        }
+        try {
+            if (!$this->recv->continue()) {
+                throw $this->errors->obtain($this) ?? new InvokeError(Code::UNKNOWN);
+            }
 
-        return $this->recv->getValue();
+            return $this->recv->getValue();
+        } catch (CancelledException $e) {
+            throw CancellationError::from($e);
+        }
     }
 
     #[\Override]
     public function headers(): Metadata
     {
-        return new Metadata($this->response->getHeaders());
+        try {
+            return new Metadata($this->response->getHeaders());
+        } catch (CancelledException $e) {
+            throw CancellationError::from($e);
+        }
     }
 
     #[\Override]
@@ -91,9 +101,15 @@ final class ConcurrentClientStream implements ClientStream
     #[\Override]
     public function getIterator(): \Traversable
     {
-        yield from $this->recv;
+        try {
+            yield from $this->recv;
 
-        $error = $this->errors->obtain($this);
+            // A cancelled call ends the message stream quietly and surfaces here, while reading the trailers.
+            $error = $this->errors->obtain($this);
+        } catch (CancelledException $e) {
+            throw CancellationError::from($e);
+        }
+
         if ($error !== null) {
             throw $error;
         }
