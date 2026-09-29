@@ -48,6 +48,9 @@
         "thesis/grpc-server": "*@dev",
         "thesis/protoregistry": "^0.1.2"
     },
+    "suggest": {
+        "ext-sockets": "Required for TCP keepalive (Client\\Builder::withKeepalive())."
+    },
     "repositories": [
         {
             "type": "path",

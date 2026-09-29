@@ -57,6 +57,8 @@ final class Builder
 
     private ?SocketConnector $connector = null;
 
+    private ?Internal\KeepaliveSettings $keepalive = null;
+
     private ?Encoder $encoder = null;
 
     /**
@@ -211,6 +213,29 @@ final class Builder
         return $builder;
     }
 
+    /**
+     * Enables TCP keepalive on every connection, so a dead peer is detected even on an idle
+     * connection after roughly `idle + interval * count` seconds. Applies on top of a custom
+     * {@see self::withSocketConnector()} connector, but not to a custom
+     * {@see self::withHttpClient()} client. Requires the "sockets" extension.
+     *
+     * @param positive-int $idle seconds of idleness before the first probe
+     * @param positive-int $interval seconds between unanswered probes
+     * @param positive-int $count unanswered probes before the connection is dropped
+     * @throws KeepaliveUnavailable
+     */
+    public function withKeepalive(int $idle = 10, int $interval = 10, int $count = 3): self
+    {
+        if (!\extension_loaded('sockets')) {
+            throw new KeepaliveUnavailable();
+        }
+
+        $builder = clone $this;
+        $builder->keepalive = new Internal\KeepaliveSettings($idle, $interval, $count);
+
+        return $builder;
+    }
+
     public function withLoadBalancer(LoadBalancerFactory $factory): self
     {
         $builder = clone $this;
@@ -272,11 +297,21 @@ final class Builder
             $controlMetadata,
         ]);
 
+        $connector = $this->connector ?? new DnsSocketConnector();
+        if ($this->keepalive !== null) {
+            $connector = new KeepaliveSocketConnector(
+                $connector,
+                $this->keepalive->idle,
+                $this->keepalive->interval,
+                $this->keepalive->count,
+            );
+        }
+
         $httpclient = $this->httpclient ?? new HttpClientBuilder()
             ->usingPool(ConnectionLimitingPool::byAuthority(
                 $this->connectionLimit,
                 new DefaultConnectionFactory(
-                    $this->connector ?? new DnsSocketConnector(),
+                    $connector,
                     new ConnectContext()
                         ->withConnectTimeout($this->connectTimeout)
                         ->withTlsContext($tlsContext),

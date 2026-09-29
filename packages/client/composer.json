@@ -34,5 +34,8 @@
     "config": {
         "lock": false,
         "sort-packages": true
+    },
+    "suggest": {
+        "ext-sockets": "Required for TCP keepalive (Client\\Builder::withKeepalive())."
     }
 }
