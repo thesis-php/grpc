@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Thesis\Grpc\Client\Internal;
 
 use Amp\Cancellation;
+use Amp\CancelledException;
 use Amp\NullCancellation;
 use Thesis\Google\Rpc\Code;
 use Thesis\Grpc\Client;
@@ -53,6 +54,8 @@ final readonly class AmphpHttpClient implements Client
                     return $stream->receive();
                 } catch (GrpcException $e) {
                     throw $e;
+                } catch (CancelledException $e) {
+                    throw CancellationError::from($e);
                 } catch (\Throwable $e) {
                     // Transport-level failures (e.g. a refused connection) map to UNAVAILABLE,
                     // so interceptors above see a gRPC status rather than a raw amphp exception.
@@ -74,11 +77,17 @@ final readonly class AmphpHttpClient implements Client
             $invoke,
             $md,
             $cancellation,
-            fn(
+            function (
                 Client\Invoke $invoke,
                 Metadata $md,
                 Cancellation $cancellation,
-            ): ClientStream => $this->connection->createStream($invoke, $md, $cancellation, $pick),
+            ) use ($pick): ClientStream {
+                try {
+                    return $this->connection->createStream($invoke, $md, $cancellation, $pick);
+                } catch (CancelledException $e) {
+                    throw CancellationError::from($e);
+                }
+            },
         );
     }
 
