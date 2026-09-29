@@ -47,11 +47,38 @@ final class LazyConnection implements Connection
         $future = $this->future;
         $this->future = null;
 
-        $future?->await($cancellation)->close($cancellation);
+        if ($future === null) {
+            return;
+        }
+
+        try {
+            $connection = $future->await($cancellation);
+        } catch (\Throwable $e) {
+            if ($future->isComplete()) {
+                // The connection was never established: there is nothing to close.
+                return;
+            }
+
+            throw $e;
+        }
+
+        $connection->close($cancellation);
     }
 
     private function createConnection(Cancellation $cancellation): Connection
     {
-        return ($this->future ??= async($this->factory))->await($cancellation);
+        $future = $this->future ??= async($this->factory);
+
+        try {
+            return $future->await($cancellation);
+        } catch (\Throwable $e) {
+            // Forget a failed attempt so the next call retries it. A caller that merely
+            // stopped waiting (cancellation) leaves the attempt running for the others.
+            if ($future->isComplete() && $this->future === $future) {
+                $this->future = null;
+            }
+
+            throw $e;
+        }
     }
 }
