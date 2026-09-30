@@ -14,12 +14,15 @@ use Amp\Http\Client\Response;
 use Amp\Http\Client\StreamedContent;
 use Amp\NullCancellation;
 use Amp\Pipeline;
+use Thesis\Google\Rpc\Code;
 use Thesis\Grpc\Client\Address;
 use Thesis\Grpc\Client\Invoke;
 use Thesis\Grpc\ClientStream;
+use Thesis\Grpc\Compression\CompressionUnavailable;
 use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Encoding\Encoder;
 use Thesis\Grpc\Internal\Http2\StreamCodec;
+use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
 use function Amp\async;
 
@@ -30,6 +33,9 @@ final readonly class StreamFactory
 {
     private StreamCodec $codec;
 
+    /**
+     * @param list<Compressor> $compressors
+     */
     public function __construct(
         private DelegateHttpClient $http,
         private UriFactory $uri,
@@ -38,10 +44,12 @@ final readonly class StreamFactory
         private float $inactivityTimeout,
         Encoder $encoder,
         Compressor $compressor,
+        array $compressors,
     ) {
         $this->codec = new StreamCodec(
             $encoder,
             $compressor,
+            $compressors,
         );
     }
 
@@ -95,7 +103,18 @@ final readonly class StreamFactory
         return new ConcurrentClientStream(
             responseFuture: $response,
             send: $send,
-            decode: fn(Response $response) => $this->codec->decode($response->getBody(), $invoke->output, $cancellation),
+            decode: function (Response $response) use ($invoke, $cancellation): Pipeline\ConcurrentIterator {
+                try {
+                    return $this->codec->decode(
+                        $response->getBody(),
+                        $invoke->output,
+                        $cancellation,
+                        Metadata\parseContentEncoding(new Metadata($response->getHeaders()))->encoding ?? Metadata\ContentEncoding::GRPC_DEFAULT_COMPRESSION,
+                    );
+                } catch (CompressionUnavailable $e) {
+                    throw new InvokeError(Code::INTERNAL, $e->getMessage(), previous: $e);
+                }
+            },
             errors: $this->errors,
             complete: $deferred->getFuture(),
         );

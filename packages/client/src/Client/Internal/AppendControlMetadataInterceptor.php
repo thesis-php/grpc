@@ -21,10 +21,12 @@ final readonly class AppendControlMetadataInterceptor implements
     /**
      * @param non-empty-string $encoding
      * @param non-empty-string $compression
+     * @param list<non-empty-string> $acceptEncoding
      */
     public function __construct(
         private string $encoding,
         private string $compression,
+        private array $acceptEncoding,
     ) {}
 
     #[\Override]
@@ -54,6 +56,7 @@ final readonly class AppendControlMetadataInterceptor implements
             ->withKey(new Metadata\ContentType($this->encoding))
             ->withKey(Metadata\UserAgent::Key)
             ->withKey(new Metadata\ContentEncoding($this->compression))
+            ->withKey(new Metadata\AcceptEncoding($this->acceptEncoding))
             ->with('TE', 'trailers');
     }
 }

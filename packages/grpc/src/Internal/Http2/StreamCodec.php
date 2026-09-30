@@ -9,6 +9,7 @@ use Amp\Cancellation;
 use Amp\CancelledException;
 use Amp\Pipeline;
 use Revolt\EventLoop;
+use Thesis\Grpc\Compression\CompressionUnavailable;
 use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Encoding\Encoder;
 use Thesis\Grpc\Internal\Protocol;
@@ -18,10 +19,24 @@ use Thesis\Grpc\Internal\Protocol;
  */
 final readonly class StreamCodec
 {
+    /** @var array<non-empty-string, Compressor> */
+    private array $compressors;
+
+    /**
+     * @param list<Compressor> $compressors to decompress messages with, selected by the peer's "grpc-encoding"
+     */
     public function __construct(
         private Encoder $encoder,
         private Compressor $compressor,
-    ) {}
+        array $compressors = [],
+    ) {
+        $compressors = [$compressor, ...$compressors];
+
+        $this->compressors = array_combine(
+            array_map(static fn(Compressor $compressor) => $compressor->name(), $compressors),
+            $compressors,
+        );
+    }
 
     /**
      * @template T of object
@@ -78,13 +93,20 @@ final readonly class StreamCodec
     /**
      * @template T of object
      * @param class-string<T> $type
+     * @param ?non-empty-string $encoding
      * @return Pipeline\ConcurrentIterator<T>
+     * @throws CompressionUnavailable
      */
     public function decode(
         ReadableStream $in,
         string $type,
         Cancellation $cancellation,
+        ?string $encoding = null,
     ): Pipeline\ConcurrentIterator {
+        $compressor = $encoding === null
+            ? $this->compressor
+            : $this->compressors[$encoding] ?? throw new CompressionUnavailable($encoding);
+
         /** @var Pipeline\Queue<T> $out */
         $out = new Pipeline\Queue();
 
@@ -92,7 +114,7 @@ final readonly class StreamCodec
             $out->push(...),
             $type,
             $this->encoder,
-            $this->compressor,
+            $compressor,
         );
 
         EventLoop::queue(static function () use (

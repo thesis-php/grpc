@@ -36,6 +36,9 @@ final class Builder
 
     private ?Compressor $compressor = null;
 
+    /** @var list<Compressor> */
+    private array $compressors = [];
+
     private ?DelegateHttpClient $httpclient = null;
 
     /** @var list<UnaryInterceptor> */
@@ -91,6 +94,20 @@ final class Builder
     {
         $builder = clone $this;
         $builder->compressor = $compressor;
+
+        return $builder;
+    }
+
+    /**
+     * @no-named-arguments
+     */
+    public function withCompressors(Compressor ...$compressors): self
+    {
+        $builder = clone $this;
+        $builder->compressors = [
+            ...$builder->compressors,
+            ...$compressors,
+        ];
 
         return $builder;
     }
@@ -266,6 +283,10 @@ final class Builder
 
         $encoder = $this->encoder ?? ProtobufEncoder::default();
         $compressor = $this->compressor ?? IdentityCompressor::Compressor;
+        $compressors = [
+            ...$this->compressors,
+            IdentityCompressor::Compressor,
+        ];
         $protobuf = $this->protobuf ?? Decoder\Builder::buildDefault();
         $loadBalancerFactory = $this->loadBalancerFactory ?? new LoadBalancer\PickFirstFactory();
         $tlsContext = $this->credentials?->createContext();
@@ -283,6 +304,10 @@ final class Builder
         $controlMetadata = new Internal\AppendControlMetadataInterceptor(
             $encoder->name(),
             $compressor->name(),
+            array_values(array_unique(array_map(
+                static fn(Compressor $compressor) => $compressor->name(),
+                [$compressor, ...$compressors],
+            ))),
         );
 
         // Control metadata sits innermost (closest to the transport) so every user
@@ -336,6 +361,7 @@ final class Builder
                         inactivityTimeout: $inactivityTimeout,
                         encoder: $encoder,
                         compressor: $compressor,
+                        compressors: $compressors,
                     ),
                 ),
             ),
