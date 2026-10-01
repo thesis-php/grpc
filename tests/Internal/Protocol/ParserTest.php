@@ -8,9 +8,11 @@ use Echos\Api\V1\EchoRequest;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
+use Thesis\Google\Rpc\Code;
 use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Compression\GzipCompressor;
 use Thesis\Grpc\Compression\IdentityCompressor;
+use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Protobuf\ProtobufEncoder;
 
 #[CoversClass(Parser::class)]
@@ -32,6 +34,7 @@ final class ParserTest extends TestCase
             EchoRequest::class,
             ProtobufEncoder::default(),
             $compressor,
+            4_096,
         );
 
         foreach ($chunks as $chunk) {
@@ -120,6 +123,20 @@ final class ParserTest extends TestCase
                 $compressor,
             ];
         }
+    }
+
+    public function testMessageTooLarge(): void
+    {
+        $parser = new Parser(
+            static fn(EchoRequest $request) => self::fail('No message expected.'),
+            EchoRequest::class,
+            ProtobufEncoder::default(),
+            IdentityCompressor::Compressor,
+            4_096,
+        );
+
+        $this->expectExceptionObject(new InvokeError(Code::RESOURCE_EXHAUSTED, 'Received message larger than max (4097 vs. 4096)'));
+        $parser->push(pack('CN', 0, 4_097));
     }
 
     private static function frame(string $sentence, Compressor $compressor = IdentityCompressor::Compressor): string

@@ -58,6 +58,7 @@ final class ServerRequestHandler implements
     /**
      * @param list<UnaryInterceptor> $unaryInterceptors
      * @param list<StreamInterceptor> $streamInterceptors
+     * @param positive-int $maxReceiveMessageSize
      */
     public function __construct(
         private readonly MessageEncoderFactory $encoderFactory,
@@ -65,6 +66,7 @@ final class ServerRequestHandler implements
         Protobuf\Encoder $protobuf,
         array $unaryInterceptors,
         array $streamInterceptors,
+        private readonly int $maxReceiveMessageSize,
     ) {
         $this->pending = new \WeakMap();
         $this->router = new Router();
@@ -129,9 +131,10 @@ final class ServerRequestHandler implements
 
         /** @var array<non-empty-string, StreamFactory> $streams */
         static $streams = [];
-        $factory = $streams["{$encoder->name()}\0{$compressor->name()}"] ??= new StreamFactory(
+        $factory = $streams["{$encoder->name()}\0{$compressor->name()}\0{$this->maxReceiveMessageSize}"] ??= new StreamFactory(
             $encoder,
             $compressor,
+            $this->maxReceiveMessageSize,
         );
 
         $response = new Response(status: HttpStatus::OK, headers: $headers->kv);

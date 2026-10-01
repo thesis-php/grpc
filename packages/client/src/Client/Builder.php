@@ -30,6 +30,7 @@ final class Builder
     private const int DEFAULT_CONNECTION_LIMIT = \PHP_INT_MAX;
     private const int DEFAULT_TRANSFER_TIMEOUT = 0; // no transfer timeout
     private const int DEFAULT_INACTIVITY_TIMEOUT = 0; // no inactivity timeout
+    private const int DEFAULT_MAX_RECEIVE_MESSAGE_SIZE = 4 * 1_024 * 1_024;
 
     /** @var ?non-empty-string */
     private ?string $host = null;
@@ -57,6 +58,9 @@ final class Builder
     private float $transferTimeout = self::DEFAULT_TRANSFER_TIMEOUT;
 
     private float $inactivityTimeout = self::DEFAULT_INACTIVITY_TIMEOUT;
+
+    /** @var positive-int */
+    private int $maxReceiveMessageSize = self::DEFAULT_MAX_RECEIVE_MESSAGE_SIZE;
 
     private ?SocketConnector $connector = null;
 
@@ -214,6 +218,17 @@ final class Builder
         return $builder;
     }
 
+    /**
+     * @param positive-int $bytes
+     */
+    public function withMaxReceiveMessageSize(int $bytes): self
+    {
+        $builder = clone $this;
+        $builder->maxReceiveMessageSize = $bytes;
+
+        return $builder;
+    }
+
     public function withTransportCredentials(TransportCredentials $credentials): self
     {
         $builder = clone $this;
@@ -293,6 +308,7 @@ final class Builder
         $uriFactory = new Http2\UriFactory($tlsContext !== null ? Internal\HttpScheme::Https : Internal\HttpScheme::Http);
         $transferTimeout = $this->transferTimeout;
         $inactivityTimeout = $this->inactivityTimeout;
+        $maxReceiveMessageSize = $this->maxReceiveMessageSize;
 
         $resolver = $this->endpointResolvers[$target->scheme] ?? match (Scheme::tryFrom($target->scheme)) {
             Scheme::Dns => new EndpointResolver\DnsResolver(),
@@ -361,6 +377,7 @@ final class Builder
                         inactivityTimeout: $inactivityTimeout,
                         encoder: $encoder,
                         compressor: $compressor,
+                        maxReceiveMessageSize: $maxReceiveMessageSize,
                         compressors: $compressors,
                     ),
                 ),

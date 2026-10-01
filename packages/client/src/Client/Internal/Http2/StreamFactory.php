@@ -34,6 +34,7 @@ final readonly class StreamFactory
     private StreamCodec $codec;
 
     /**
+     * @param positive-int $maxReceiveMessageSize
      * @param list<Compressor> $compressors
      */
     public function __construct(
@@ -44,11 +45,13 @@ final readonly class StreamFactory
         private float $inactivityTimeout,
         Encoder $encoder,
         Compressor $compressor,
+        int $maxReceiveMessageSize,
         array $compressors,
     ) {
         $this->codec = new StreamCodec(
             $encoder,
             $compressor,
+            $maxReceiveMessageSize,
             $compressors,
         );
     }
@@ -82,6 +85,8 @@ final readonly class StreamFactory
         $request->setHeaders($md->kv);
         $request->setTransferTimeout($this->transferTimeout);
         $request->setInactivityTimeout($this->inactivityTimeout);
+        // gRPC limits the size of a single message, not the stream, see {@see StreamCodec}.
+        $request->setBodySizeLimit(\PHP_INT_MAX);
 
         // If the program terminates after making a request, the HTTP client may not have enough time to finish sending the request body and trailers,
         // causing an error on the server side — after a certain timeout, the server will detect that the client unexpectedly closed the connection.

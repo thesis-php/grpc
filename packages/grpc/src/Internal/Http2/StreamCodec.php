@@ -23,11 +23,13 @@ final readonly class StreamCodec
     private array $compressors;
 
     /**
+     * @param positive-int $maxReceiveMessageSize
      * @param list<Compressor> $compressors to decompress messages with, selected by the peer's "grpc-encoding"
      */
     public function __construct(
         private Encoder $encoder,
         private Compressor $compressor,
+        private int $maxReceiveMessageSize,
         array $compressors = [],
     ) {
         $compressors = [$compressor, ...$compressors];
@@ -115,6 +117,7 @@ final readonly class StreamCodec
             $type,
             $this->encoder,
             $compressor,
+            $this->maxReceiveMessageSize,
         );
 
         EventLoop::queue(static function () use (

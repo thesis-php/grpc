@@ -42,7 +42,10 @@ final class Builder
     private const int DEFAULT_STREAM_TIMEOUT = HttpDriver::DEFAULT_STREAM_TIMEOUT;
     private const int DEFAULT_CONNECTION_TIMEOUT = HttpDriver::DEFAULT_CONNECTION_TIMEOUT;
     private const int DEFAULT_HEADER_SIZE_LIMIT = HttpDriver::DEFAULT_HEADER_SIZE_LIMIT;
-    private const int DEFAULT_BODY_SIZE_LIMIT = HttpDriver::DEFAULT_BODY_SIZE_LIMIT;
+
+    // gRPC limits the size of a single message, not the stream. Not PHP_INT_MAX, since amphp adds one to the limit when updating the flow-control window.
+    private const int DEFAULT_BODY_SIZE_LIMIT = \PHP_INT_MAX - 1;
+    private const int DEFAULT_MAX_RECEIVE_MESSAGE_SIZE = 4 * 1_024 * 1_024;
 
     /** @var list<non-empty-string> */
     private const array ALLOWED_HTTP_METHODS = ['POST'];
@@ -97,6 +100,9 @@ final class Builder
 
     /** @var positive-int */
     private int $bodySizeLimit = self::DEFAULT_BODY_SIZE_LIMIT;
+
+    /** @var positive-int */
+    private int $maxReceiveMessageSize = self::DEFAULT_MAX_RECEIVE_MESSAGE_SIZE;
 
     /**
      * Required for encoding the `grpc-status-details-bin` header, `status`, and `details`.
@@ -344,6 +350,17 @@ final class Builder
         return $builder;
     }
 
+    /**
+     * @param positive-int $bytes
+     */
+    public function withMaxReceiveMessageSize(int $bytes): self
+    {
+        $builder = clone $this;
+        $builder->maxReceiveMessageSize = $bytes;
+
+        return $builder;
+    }
+
     public function build(): Server
     {
         $logger = $this->logger ?? new NullLogger();
@@ -418,6 +435,7 @@ final class Builder
                 protobuf: $this->protobuf ?? Protobuf\Encoder\Builder::buildDefault(),
                 unaryInterceptors: $this->unaryInterceptors,
                 streamInterceptors: $this->streamInterceptors,
+                maxReceiveMessageSize: $this->maxReceiveMessageSize,
             ),
             errorHandler: new ServerErrorHandler(),
         );

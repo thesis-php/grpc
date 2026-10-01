@@ -25,13 +25,18 @@ final readonly class StreamFactory
 {
     private StreamCodec $codec;
 
+    /**
+     * @param positive-int $maxReceiveMessageSize
+     */
     public function __construct(
         Encoder $encoder,
         Compressor $compressor,
+        int $maxReceiveMessageSize,
     ) {
         $this->codec = new StreamCodec(
             $encoder,
             $compressor,
+            $maxReceiveMessageSize,
         );
     }
 

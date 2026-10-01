@@ -21,6 +21,8 @@ use Thesis\Grpc\Protobuf\ProtobufEncoder;
 #[CoversClass(StreamCodec::class)]
 final class StreamCodecTest extends TestCase
 {
+    private const int MAX_MESSAGE_SIZE = 4 * 1_024 * 1_024;
+
     /**
      * @param ?non-empty-string $encoding
      */
@@ -33,7 +35,7 @@ final class StreamCodecTest extends TestCase
         ];
 
         $frames = implode('', iterator_to_array(
-            new StreamCodec(ProtobufEncoder::default(), $sender)->encode(
+            new StreamCodec(ProtobufEncoder::default(), $sender, self::MAX_MESSAGE_SIZE)->encode(
                 Pipeline::fromIterable($messages)->getIterator(),
                 new NullCancellation(),
             ),
@@ -53,32 +55,32 @@ final class StreamCodecTest extends TestCase
     {
         yield 'default compressor' => [
             new GzipCompressor(),
-            new StreamCodec(ProtobufEncoder::default(), new GzipCompressor()),
+            new StreamCodec(ProtobufEncoder::default(), new GzipCompressor(), self::MAX_MESSAGE_SIZE),
             null,
         ];
 
         yield 'own compressor by encoding' => [
             new GzipCompressor(),
-            new StreamCodec(ProtobufEncoder::default(), new GzipCompressor()),
+            new StreamCodec(ProtobufEncoder::default(), new GzipCompressor(), self::MAX_MESSAGE_SIZE),
             'gzip',
         ];
 
         yield 'additional compressor by encoding' => [
             new DeflateCompressor(),
-            new StreamCodec(ProtobufEncoder::default(), IdentityCompressor::Compressor, [new GzipCompressor(), new DeflateCompressor()]),
+            new StreamCodec(ProtobufEncoder::default(), IdentityCompressor::Compressor, self::MAX_MESSAGE_SIZE, [new GzipCompressor(), new DeflateCompressor()]),
             'deflate',
         ];
 
         yield 'identity by encoding' => [
             IdentityCompressor::Compressor,
-            new StreamCodec(ProtobufEncoder::default(), new GzipCompressor(), [IdentityCompressor::Compressor]),
+            new StreamCodec(ProtobufEncoder::default(), new GzipCompressor(), self::MAX_MESSAGE_SIZE, [IdentityCompressor::Compressor]),
             'identity',
         ];
     }
 
     public function testDecodeUnknownEncoding(): void
     {
-        $codec = new StreamCodec(ProtobufEncoder::default(), IdentityCompressor::Compressor, [new GzipCompressor()]);
+        $codec = new StreamCodec(ProtobufEncoder::default(), IdentityCompressor::Compressor, self::MAX_MESSAGE_SIZE, [new GzipCompressor()]);
 
         $this->expectExceptionObject(new CompressionUnavailable('snappy'));
         $codec->decode(new ReadableBuffer(), EchoRequest::class, new NullCancellation(), 'snappy');
