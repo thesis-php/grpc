@@ -27,7 +27,11 @@ final readonly class Status implements MetadataKey
     {
         $md = $md
             ->replace(self::STATUS_HEADER, (string) $this->code->value)
-            ->replace(self::MESSAGE_HEADER, $this->message ?? '');
+            ->replace(self::MESSAGE_HEADER, (string) preg_replace_callback(
+                '/[^\x20-\x24\x26-\x7e]/',
+                static fn(array $byte): string => \sprintf('%%%02X', \ord($byte[0])),
+                $this->message ?? '',
+            ));
 
         if ($this->details !== null && $this->details !== '') {
             $md = $md->replace(self::DETAILS_HEADER, $this->details);
@@ -46,7 +50,7 @@ function parseStatus(Metadata $md): Status
 
     return new Status(
         $code,
-        $md->value(Status::MESSAGE_HEADER),
+        ($message = $md->value(Status::MESSAGE_HEADER)) !== null ? rawurldecode($message) : null,
         $md->value(Status::DETAILS_HEADER),
     );
 }

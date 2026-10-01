@@ -63,4 +63,13 @@ final class NotImplementedTest extends TestCase
         $this->expectExceptionMessage('A grpc error with status code "UNIMPLEMENTED" and message "Unknown method Ping for service echos.api.v1.EchoService" occurred');
         $client->invoke(new EchoRequest(), new Invoke('/echos.api.v1.EchoService/Ping', EchoResponse::class, RpcType::Unary));
     }
+
+    public function testMethodNotImplementedMessageIsPercentEncoded(): void
+    {
+        $client = new Client\Builder()->build();
+
+        // The client URI layer encodes "%" in the path before it reaches the server, so the server reports the method as "100%25".
+        $this->expectExceptionMessage('A grpc error with status code "UNIMPLEMENTED" and message "Unknown method 100%25 for service echos.api.v1.EchoService" occurred');
+        $client->invoke(new EchoRequest(), new Invoke('/echos.api.v1.EchoService/100%', EchoResponse::class, RpcType::Unary));
+    }
 }
