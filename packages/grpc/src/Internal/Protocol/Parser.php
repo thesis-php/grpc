@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc\Internal\Protocol;
 
+use Thesis\Google\Rpc\Code;
 use Thesis\Grpc\Compression;
 use Thesis\Grpc\Encoding;
+use Thesis\Grpc\InvokeError;
 
 /**
  * @internal
@@ -18,17 +20,20 @@ final class Parser
     /**
      * @param \Closure(T): void $push
      * @param class-string<T> $type
+     * @param positive-int $maxMessageSize
      */
     public function __construct(
         private readonly \Closure $push,
         private readonly string $type,
         private readonly Encoding\Encoder $encoder,
         private readonly Compression\Compressor $compressor,
+        private readonly int $maxMessageSize,
     ) {}
 
     /**
      * @throws Compression\DecompressionFailed
      * @throws Encoding\DecodingFailed
+     * @throws InvokeError
      */
     public function push(string $data): void
     {
@@ -39,6 +44,10 @@ final class Parser
                 /** @phpstan-ignore argument.type */
                 substr($this->buffer, lengthOffset, 4),
             );
+
+            if ($messageLength > $this->maxMessageSize) {
+                throw new InvokeError(Code::RESOURCE_EXHAUSTED, "Received message larger than max ({$messageLength} vs. {$this->maxMessageSize})");
+            }
 
             $frameSize = bodyOffset + $messageLength;
 
