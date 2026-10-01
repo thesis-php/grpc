@@ -119,6 +119,28 @@ final class UnaryTest extends TestCase
 
         self::fail('Client::echo() above should be throw an exception');
     }
+
+    public function testSpecialStatusMessage(): void
+    {
+        $client = new EchoServiceClient(
+            new Client\Builder()
+            ->withUnaryInterceptors(new AuthorizationClientInterceptor('secret'))
+            ->build(),
+        );
+
+        $message = "\t\ntest with whitespace\r\nand Unicode BMP ☺ and non-BMP 😈\t\n";
+
+        try {
+            $client->echo(new EchoRequest($message), new Metadata()->with('server-status-message', '1'));
+        } catch (InvokeError $e) {
+            self::assertSame(Code::UNKNOWN, $e->statusCode);
+            self::assertSame($message, $e->statusMessage);
+
+            return;
+        }
+
+        self::fail('Client::echo() above should be throw an exception');
+    }
 }
 
 final readonly class UnaryEchoServer implements EchoServiceServer
@@ -136,6 +158,10 @@ final readonly class UnaryEchoServer implements EchoServiceServer
                     new BadRequest\FieldViolation('sentence', 'invalid sentence'),
                 ]),
             ]);
+        }
+
+        if ($md->value('server-status-message') === '1') {
+            throw new InvokeError(Code::UNKNOWN, $request->sentence);
         }
 
         $sentence = $md->value('server-sentence') ?? $request->sentence;

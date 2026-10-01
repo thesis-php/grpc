@@ -115,10 +115,9 @@ final class ServerRequestHandler implements
             return new Response(
                 status: HttpStatus::OK,
                 headers: $headers->kv,
-                trailers: new Trailers(Future::complete([
-                    Metadata\Status::STATUS_HEADER => (string) Rpc\Code::UNIMPLEMENTED->value,
-                    Metadata\Status::MESSAGE_HEADER => $e->getMessage(),
-                ])),
+                trailers: new Trailers(Future::complete(
+                    new Metadata()->withKey(new Metadata\Status(Rpc\Code::UNIMPLEMENTED, $e->getMessage()))->kv,
+                )),
             );
         }
 
