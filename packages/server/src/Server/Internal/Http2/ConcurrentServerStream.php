@@ -7,6 +7,7 @@ namespace Thesis\Grpc\Server\Internal\Http2;
 use Amp\DeferredFuture;
 use Amp\Pipeline;
 use Thesis\Grpc\Exception\ServerStreamIsClosed;
+use Thesis\Grpc\Internal\Http2;
 use Thesis\Grpc\Metadata;
 use Thesis\Grpc\ServerStream;
 
@@ -63,7 +64,7 @@ final class ConcurrentServerStream implements ServerStream
             return;
         }
 
-        $this->trailersFuture->complete($this->trailers->kv);
+        $this->trailersFuture->complete(Http2\encodeMetadata($this->trailers));
         $this->send->complete();
     }
 

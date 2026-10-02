@@ -14,6 +14,7 @@ use Thesis\Google\Rpc\Code;
 use Thesis\Grpc\Client\Internal\CancellationError;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Exception\ClientStreamIsClosed;
+use Thesis\Grpc\Internal\Http2;
 use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
 
@@ -75,7 +76,7 @@ final class ConcurrentClientStream implements ClientStream
     public function headers(): Metadata
     {
         try {
-            return new Metadata($this->response->getHeaders());
+            return Http2\decodeMetadata($this->response->getHeaders());
         } catch (CancelledException $e) {
             throw CancellationError::from($e);
         }
@@ -84,7 +85,7 @@ final class ConcurrentClientStream implements ClientStream
     #[\Override]
     public function trailers(Cancellation $cancellation = new NullCancellation()): Metadata
     {
-        return new Metadata($this->response->getTrailers()->await($cancellation)->getHeaders());
+        return Http2\decodeMetadata($this->response->getTrailers()->await($cancellation)->getHeaders());
     }
 
     #[\Override]
