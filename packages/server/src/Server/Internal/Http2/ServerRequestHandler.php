@@ -15,6 +15,7 @@ use Amp\Http\Server\Response;
 use Amp\Http\Server\Trailers;
 use Amp\TimeoutCancellation;
 use Thesis\Google\Rpc;
+use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
 use Thesis\Grpc\Server\Internal\StreamHandleInterceptor;
 use Thesis\Grpc\Server\Internal\StreamInterceptorComposer;
@@ -31,6 +32,8 @@ use Thesis\Grpc\ServiceRegistrar;
 use Thesis\Grpc\UnimplementedException;
 use Thesis\Protobuf;
 use function Amp\async;
+use function Thesis\Grpc\Internal\Http2\decodeMetadata;
+use function Thesis\Grpc\Internal\Http2\encodeMetadata;
 
 /**
  * @internal
@@ -90,7 +93,14 @@ final class ServerRequestHandler implements
     #[\Override]
     public function handleRequest(Request $request): Response
     {
-        $md = new Metadata($request->getHeaders());
+        try {
+            $md = decodeMetadata($request->getHeaders());
+        } catch (InvokeError $e) {
+            return self::trailersOnly(
+                new Metadata()->withKey(new Metadata\ContentType()),
+                new Metadata\Status($e->statusCode, $e->statusMessage),
+            );
+        }
 
         $headers = new Metadata();
 
@@ -102,7 +112,7 @@ final class ServerRequestHandler implements
         $headers = $headers->withKey($contentType ?? new Metadata\ContentType());
 
         if ($contentType === null) {
-            return new Response(status: HttpStatus::UNSUPPORTED_MEDIA_TYPE, headers: $headers->kv);
+            return new Response(status: HttpStatus::UNSUPPORTED_MEDIA_TYPE, headers: encodeMetadata($headers));
         }
 
         // For "grpc-encoding" header we follow the same approach as for "Content-Type": we should not specify "IDENTITY" by default for the response to avoid sending an unnecessary header.
@@ -114,13 +124,7 @@ final class ServerRequestHandler implements
             $encoder = $this->encoderFactory->encoder($contentType->encoding ?? Metadata\ContentType::GRPC_DEFAULT_ENCODING);
             $rpc = $this->router->route($request);
         } catch (UnimplementedException $e) {
-            return new Response(
-                status: HttpStatus::OK,
-                headers: $headers->kv,
-                trailers: new Trailers(Future::complete(
-                    new Metadata()->withKey(new Metadata\Status(Rpc\Code::UNIMPLEMENTED, $e->getMessage()))->kv,
-                )),
-            );
+            return self::trailersOnly($headers, new Metadata\Status(Rpc\Code::UNIMPLEMENTED, $e->getMessage()));
         }
 
         // The "grpc-encoding" header should only be sent when a protobuf message is expected to be returned.
@@ -137,7 +141,7 @@ final class ServerRequestHandler implements
             $this->maxReceiveMessageSize,
         );
 
-        $response = new Response(status: HttpStatus::OK, headers: $headers->kv);
+        $response = new Response(status: HttpStatus::OK, headers: encodeMetadata($headers));
 
         $cancellation = new DeferredCancellation();
 
@@ -154,6 +158,7 @@ final class ServerRequestHandler implements
         /** @var ServerStream<object, object> $stream */
         $stream = $factory->create(
             $rpc->handle,
+            $md,
             $request,
             $response,
             $streamCancellation,
@@ -241,5 +246,14 @@ final class ServerRequestHandler implements
         }
 
         Future\awaitAll($futures, $cancellation);
+    }
+
+    private static function trailersOnly(Metadata $headers, Metadata\Status $status): Response
+    {
+        return new Response(
+            status: HttpStatus::OK,
+            headers: encodeMetadata($headers),
+            trailers: new Trailers(Future::complete(encodeMetadata(new Metadata()->withKey($status)))),
+        );
     }
 }

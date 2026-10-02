@@ -47,7 +47,7 @@ function serializeContext(Context $context, Encoder $protobuf): Metadata\Status
     return new Metadata\Status(
         $context->code,
         $context->message,
-        base64_encode($protobuf->encode($status)),
+        $protobuf->encode($status),
     );
 }
 
@@ -61,14 +61,11 @@ function deserializeContext(Metadata $md, Decoder $protobuf): Context
 
     $details = [];
 
-    if (($bin = $status->details) !== null) {
-        $decoded = base64_decode($bin, true);
-        if ($decoded !== false) {
-            $details = array_map(
-                static fn(Protobuf\Any $detail) => Protobuf\decodeAny($detail, $protobuf),
-                $protobuf->decode($decoded, Rpc\Status::class)->details,
-            );
-        }
+    if ($status->details !== null) {
+        $details = array_map(
+            static fn(Protobuf\Any $detail) => Protobuf\decodeAny($detail, $protobuf),
+            $protobuf->decode($status->details, Rpc\Status::class)->details,
+        );
     }
 
     return new Context(

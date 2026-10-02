@@ -25,6 +25,7 @@ use Thesis\Grpc\Internal\Http2\StreamCodec;
 use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
 use function Amp\async;
+use function Thesis\Grpc\Internal\Http2\encodeMetadata;
 
 /**
  * @internal
@@ -82,7 +83,7 @@ final readonly class StreamFactory
             ),
         );
         $request->setProtocolVersions(['2']);
-        $request->setHeaders($md->kv);
+        $request->setHeaders(encodeMetadata($md));
         $request->setTransferTimeout($this->transferTimeout);
         $request->setInactivityTimeout($this->inactivityTimeout);
         // gRPC limits the size of a single message, not the stream, see {@see StreamCodec}.

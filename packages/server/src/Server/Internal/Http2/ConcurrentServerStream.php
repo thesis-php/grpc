@@ -9,6 +9,7 @@ use Amp\Pipeline;
 use Thesis\Grpc\Exception\ServerStreamIsClosed;
 use Thesis\Grpc\Metadata;
 use Thesis\Grpc\ServerStream;
+use function Thesis\Grpc\Internal\Http2\encodeMetadata;
 
 /**
  * @internal
@@ -63,7 +64,7 @@ final class ConcurrentServerStream implements ServerStream
             return;
         }
 
-        $this->trailersFuture->complete($this->trailers->kv);
+        $this->trailersFuture->complete(encodeMetadata($this->trailers));
         $this->send->complete();
     }
 

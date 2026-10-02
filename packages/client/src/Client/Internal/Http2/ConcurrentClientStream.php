@@ -16,6 +16,7 @@ use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Exception\ClientStreamIsClosed;
 use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
+use function Thesis\Grpc\Internal\Http2\decodeMetadata;
 
 /**
  * @internal
@@ -75,7 +76,7 @@ final class ConcurrentClientStream implements ClientStream
     public function headers(): Metadata
     {
         try {
-            return new Metadata($this->response->getHeaders());
+            return decodeMetadata($this->response->getHeaders());
         } catch (CancelledException $e) {
             throw CancellationError::from($e);
         }
@@ -84,7 +85,7 @@ final class ConcurrentClientStream implements ClientStream
     #[\Override]
     public function trailers(Cancellation $cancellation = new NullCancellation()): Metadata
     {
-        return new Metadata($this->response->getTrailers()->await($cancellation)->getHeaders());
+        return decodeMetadata($this->response->getTrailers()->await($cancellation)->getHeaders());
     }
 
     #[\Override]

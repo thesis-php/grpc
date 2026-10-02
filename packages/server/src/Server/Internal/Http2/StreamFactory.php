@@ -46,6 +46,7 @@ final readonly class StreamFactory
      */
     public function create(
         Handle $handle,
+        Metadata $md,
         Request $request,
         Response $response,
         Cancellation $cancellation,
@@ -62,7 +63,7 @@ final readonly class StreamFactory
         ));
 
         return new ConcurrentServerStream(
-            new Metadata($request->getHeaders()),
+            $md,
             $this->codec->decode($request->getBody(), $handle->type, $cancellation),
             $send,
             $trailers,
