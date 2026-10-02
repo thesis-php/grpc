@@ -15,6 +15,7 @@ use Amp\Http\Server\Response;
 use Amp\Http\Server\Trailers;
 use Amp\TimeoutCancellation;
 use Thesis\Google\Rpc;
+use Thesis\Grpc\Internal\Http2;
 use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
 use Thesis\Grpc\Server\Internal\StreamHandleInterceptor;
@@ -32,8 +33,6 @@ use Thesis\Grpc\ServiceRegistrar;
 use Thesis\Grpc\UnimplementedException;
 use Thesis\Protobuf;
 use function Amp\async;
-use function Thesis\Grpc\Internal\Http2\decodeMetadata;
-use function Thesis\Grpc\Internal\Http2\encodeMetadata;
 
 /**
  * @internal
@@ -94,7 +93,7 @@ final class ServerRequestHandler implements
     public function handleRequest(Request $request): Response
     {
         try {
-            $md = decodeMetadata($request->getHeaders());
+            $md = Http2\decodeMetadata($request->getHeaders());
         } catch (InvokeError $e) {
             return self::trailersOnly(
                 new Metadata()->withKey(new Metadata\ContentType()),
@@ -112,7 +111,7 @@ final class ServerRequestHandler implements
         $headers = $headers->withKey($contentType ?? new Metadata\ContentType());
 
         if ($contentType === null) {
-            return new Response(status: HttpStatus::UNSUPPORTED_MEDIA_TYPE, headers: encodeMetadata($headers));
+            return new Response(status: HttpStatus::UNSUPPORTED_MEDIA_TYPE, headers: Http2\encodeMetadata($headers));
         }
 
         // For "grpc-encoding" header we follow the same approach as for "Content-Type": we should not specify "IDENTITY" by default for the response to avoid sending an unnecessary header.
@@ -141,7 +140,7 @@ final class ServerRequestHandler implements
             $this->maxReceiveMessageSize,
         );
 
-        $response = new Response(status: HttpStatus::OK, headers: encodeMetadata($headers));
+        $response = new Response(status: HttpStatus::OK, headers: Http2\encodeMetadata($headers));
 
         $cancellation = new DeferredCancellation();
 
@@ -252,8 +251,8 @@ final class ServerRequestHandler implements
     {
         return new Response(
             status: HttpStatus::OK,
-            headers: encodeMetadata($headers),
-            trailers: new Trailers(Future::complete(encodeMetadata(new Metadata()->withKey($status)))),
+            headers: Http2\encodeMetadata($headers),
+            trailers: new Trailers(Future::complete(Http2\encodeMetadata(new Metadata()->withKey($status)))),
         );
     }
 }

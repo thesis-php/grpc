@@ -21,18 +21,17 @@ use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Compression\CompressionUnavailable;
 use Thesis\Grpc\Compression\Compressor;
 use Thesis\Grpc\Encoding\Encoder;
-use Thesis\Grpc\Internal\Http2\StreamCodec;
+use Thesis\Grpc\Internal\Http2;
 use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
 use function Amp\async;
-use function Thesis\Grpc\Internal\Http2\encodeMetadata;
 
 /**
  * @internal
  */
 final readonly class StreamFactory
 {
-    private StreamCodec $codec;
+    private Http2\StreamCodec $codec;
 
     /**
      * @param positive-int $maxReceiveMessageSize
@@ -49,7 +48,7 @@ final readonly class StreamFactory
         int $maxReceiveMessageSize,
         array $compressors,
     ) {
-        $this->codec = new StreamCodec(
+        $this->codec = new Http2\StreamCodec(
             $encoder,
             $compressor,
             $maxReceiveMessageSize,
@@ -83,7 +82,7 @@ final readonly class StreamFactory
             ),
         );
         $request->setProtocolVersions(['2']);
-        $request->setHeaders(encodeMetadata($md));
+        $request->setHeaders(Http2\encodeMetadata($md));
         $request->setTransferTimeout($this->transferTimeout);
         $request->setInactivityTimeout($this->inactivityTimeout);
         // gRPC limits the size of a single message, not the stream, see {@see StreamCodec}.
