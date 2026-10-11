@@ -20,6 +20,11 @@ interface ServerStream extends \IteratorAggregate
     public Metadata $headers { get; }
 
     /**
+     * Outgoing response metadata. This property can be modified before the first message is sent ({@see send}) or the stream is closed ({@see close}).
+     */
+    public Metadata $responseHeaders { get; }
+
+    /**
      * This property can be modified before the stream is closed ({@see close}).
      */
     public Metadata $trailers { get; }

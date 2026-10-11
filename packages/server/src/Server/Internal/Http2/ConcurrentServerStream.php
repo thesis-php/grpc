@@ -19,17 +19,21 @@ use Thesis\Grpc\ServerStream;
  */
 final class ConcurrentServerStream implements ServerStream
 {
+    public private(set) Metadata $responseHeaders { get => $this->responseHeaders ??= new Metadata(); }
+
     public private(set) Metadata $trailers { get => $this->trailers ??= new Metadata(); }
 
     /**
      * @param Pipeline\ConcurrentIterator<In> $recv
      * @param Pipeline\Queue<Out> $send
+     * @param DeferredFuture<Metadata> $responseHeadersFuture
      * @param DeferredFuture<array<non-empty-string, list<string>>> $trailersFuture
      */
     public function __construct(
         public readonly Metadata $headers,
         private readonly Pipeline\ConcurrentIterator $recv,
         private readonly Pipeline\Queue $send,
+        private readonly DeferredFuture $responseHeadersFuture,
         private readonly DeferredFuture $trailersFuture,
     ) {}
 
@@ -39,6 +43,8 @@ final class ConcurrentServerStream implements ServerStream
         if ($this->send->isComplete()) {
             throw new ServerStreamIsClosed();
         }
+
+        $this->sendHeaders();
 
         try {
             $this->send->push($message);
@@ -64,6 +70,7 @@ final class ConcurrentServerStream implements ServerStream
             return;
         }
 
+        $this->sendHeaders();
         $this->trailersFuture->complete(Http2\encodeMetadata($this->trailers));
         $this->send->complete();
     }
@@ -72,5 +79,12 @@ final class ConcurrentServerStream implements ServerStream
     public function getIterator(): \Traversable
     {
         return $this->recv->getIterator();
+    }
+
+    private function sendHeaders(): void
+    {
+        if (!$this->responseHeadersFuture->isComplete()) {
+            $this->responseHeadersFuture->complete($this->responseHeaders);
+        }
     }
 }

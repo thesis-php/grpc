@@ -20,7 +20,7 @@
     "require": {
         "php": "^8.4",
         "amphp/http": "^2.1",
-        "amphp/http-server": "^3.4.5",
+        "amphp/http-server": "^3.4.7",
         "amphp/socket": "^2.3",
         "amphp/sync": "^2.3",
         "psr/log": "^3.0",

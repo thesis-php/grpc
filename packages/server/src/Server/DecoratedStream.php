@@ -15,6 +15,8 @@ use Thesis\Grpc\ServerStream;
  */
 abstract class DecoratedStream implements ServerStream
 {
+    public Metadata $responseHeaders { get => $this->stream->responseHeaders; }
+
     public Metadata $trailers { get => $this->stream->trailers; }
 
     public Metadata $headers { get => $this->stream->headers; }

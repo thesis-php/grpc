@@ -26,7 +26,7 @@
         "amphp/dns": "^2.4",
         "amphp/http": "^2.1",
         "amphp/http-client": "^5.3",
-        "amphp/http-server": "^3.4",
+        "amphp/http-server": "^3.4.7",
         "amphp/pipeline": "^1.2",
         "amphp/socket": "^2.3",
         "amphp/sync": "^2.3",
