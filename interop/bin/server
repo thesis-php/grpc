@@ -1,0 +1,38 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Amp\Socket\Certificate;
+use Grpc\Testing\TestServiceServerRegistry;
+use Thesis\Grpc\Interop\EchoMetadata;
+use Thesis\Grpc\Interop\Flags;
+use Thesis\Grpc\Interop\TestService;
+use Thesis\Grpc\Server;
+use function Amp\trapSignal;
+
+require_once __DIR__ . '/../../vendor/autoload.php';
+
+$flags = Flags::parse([
+    'port' => '10000',
+    'use_tls' => 'false',
+]);
+
+$builder = new Server\Builder()
+    ->withAddresses("0.0.0.0:{$flags->int('port')}")
+    ->withServices(new TestServiceServerRegistry(new TestService()))
+    ->withUnaryInterceptors(new EchoMetadata());
+
+if ($flags->bool('use_tls')) {
+    $builder = $builder->withTransportCredentials(
+        new Server\TransportCredentials()
+            ->withDefaultCertificate(new Certificate(__DIR__ . '/../tls/server1.pem', __DIR__ . '/../tls/server1.key')),
+    );
+}
+
+$server = $builder->build();
+$server->start();
+
+trapSignal([\SIGINT, \SIGTERM]);
+
+$server->stop();

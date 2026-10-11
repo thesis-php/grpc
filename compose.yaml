@@ -13,3 +13,18 @@ services:
       - .:/workspace:cached
     working_dir: /workspace
     network_mode: host
+
+  interop:
+    build:
+      context: interop
+      args:
+        PHP_IMAGE_VERSION: ${PHP_IMAGE_VERSION}
+    user: ${CONTAINER_USER:-}
+    environment:
+      XDEBUG_MODE: 'off'
+    init: true
+    volumes:
+      - .:/workspace:cached
+    working_dir: /workspace
+    network_mode: host
+    profiles: [interop]

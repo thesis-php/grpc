@@ -107,6 +107,10 @@ test: var vendor compile-test-stub ## Run tests using PHPUnit
 	$(RUN) vendor/bin/phpunit $(ARGS) --colors
 .PHONY: test
 
+interop: var vendor ## Run gRPC interop tests against grpc-go
+	$(DOCKER_COMPOSE) --profile interop run --rm --build interop php interop/bin/matrix $(ARGS)
+.PHONY: interop
+
 infect: var vendor up ## Run mutation tests using Infection
 	$(RUN) infection --show-mutations $(ARGS)
 .PHONY: infect
@@ -130,7 +134,7 @@ composer-normalize-check: ## Check that composer.json is normalized
 fix: fixer rector composer-normalize ## Run all fixing recipes
 .PHONY: fix
 
-check: fixer-check rector-check composer-validate composer-normalize-check deps-analyze phpstan test  ## Run all project checks
+check: fixer-check rector-check composer-validate composer-normalize-check deps-analyze phpstan test interop  ## Run all project checks
 .PHONY: check
 
 compile-test-stub:
@@ -143,6 +147,18 @@ compile-test-stub:
         --php-plugin_out=tests/genproto \
         tests/protos/*.proto
 .PHONY: compile-test-stub
+
+compile-interop-stub:
+	docker run --rm \
+		--pull always \
+	    --user $(CONTAINER_USER) \
+        -v $(PWD):/workspace \
+        -w /workspace \
+        ghcr.io/thesis-php/protoc-plugin:latest \
+        -I interop/protos \
+        --php-plugin_out=interop/genproto \
+        interop/protos/src/proto/grpc/testing/*.proto
+.PHONY: compile-interop-stub
 # -----------------------
 
 help:

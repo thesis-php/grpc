@@ -1,0 +1,195 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Amp\CancelledException;
+use Amp\Future;
+use Amp\Process\Process;
+use Amp\Socket\ConnectException;
+use Amp\TimeoutCancellation;
+use function Amp\async;
+use function Amp\ByteStream\buffer;
+use function Amp\delay;
+use function Amp\Socket\connect;
+
+require_once __DIR__ . '/../../vendor/autoload.php';
+
+const PORT = 50_161;
+const CASE_TIMEOUT = 60;
+const LOGS = 'var/interop';
+const TLS = 'interop/tls';
+
+const CASES = [
+    'empty_unary',
+    'large_unary',
+    'client_streaming',
+    'server_streaming',
+    'ping_pong',
+    'empty_stream',
+    'status_code_and_message',
+    'special_status_message',
+    'unimplemented_method',
+    'unimplemented_service',
+    'cancel_after_begin',
+    'cancel_after_first_response',
+    'timeout_on_sleeping_server',
+    'custom_metadata',
+    'rpc_soak',
+    'channel_soak',
+];
+
+const PAIRS = [
+    ['php', 'go'],
+    ['go', 'php'],
+    ['php', 'php'],
+];
+
+/**
+ * @return list<string>
+ */
+function server(string $server, bool $tls): array
+{
+    $flags = ['--port=' . PORT, '--use_tls=' . var_export($tls, true)];
+
+    return match ($server) {
+        'go' => ['grpc-go-interop-server', ...$flags, '--tls_cert_file=' . TLS . '/server1.pem', '--tls_key_file=' . TLS . '/server1.key'],
+        default => [\PHP_BINARY, 'interop/bin/server', ...$flags],
+    };
+}
+
+/**
+ * @return list<string>
+ */
+function client(string $client, bool $tls, string $case): array
+{
+    $flags = ['--server_host=localhost', '--server_port=' . PORT, "--test_case={$case}", '--use_tls=' . var_export($tls, true)];
+
+    if ($tls) {
+        $flags = [...$flags, '--use_test_ca=true', '--server_host_override=foo.test.google.fr'];
+    }
+
+    return match ($client) {
+        'go' => ['grpc-go-interop-client', ...$flags, ...($tls ? ['--ca_file=' . TLS . '/ca.pem'] : [])],
+        default => [\PHP_BINARY, 'interop/bin/client', ...$flags],
+    };
+}
+
+/**
+ * @return Future<string>
+ */
+function output(Process $process): Future
+{
+    /** @var Future<string> $stderr */
+    $stderr = async(static fn() => buffer($process->getStderr()));
+
+    /** @var Future<string> */
+    return async(static fn() => buffer($process->getStdout()) . $stderr->await());
+}
+
+function listening(): bool
+{
+    try {
+        connect('localhost:' . PORT)->close();
+
+        return true;
+    } catch (ConnectException) {
+        return false;
+    }
+}
+
+/**
+ * @param Future<string> $output
+ */
+function awaitServer(Process $process, Future $output): void
+{
+    for ($i = 0; $i < 100; ++$i) {
+        if (!$process->isRunning()) {
+            throw new RuntimeException("The server exited:\n" . tail($output->await()));
+        }
+
+        if (listening()) {
+            return;
+        }
+
+        delay(0.1);
+    }
+
+    $process->kill();
+
+    throw new RuntimeException('The server did not start listening on port ' . PORT . ":\n" . tail($output->await()));
+}
+
+function tail(string $output): string
+{
+    return implode("\n", array_slice(explode("\n", $output), -11));
+}
+
+// Runs every test case for each client → server pair in plaintext and TLS, prints the matrix and fails on any failed case.
+
+chdir(dirname(__DIR__, 2));
+
+@mkdir(LOGS, recursive: true);
+
+$columns = [];
+$matrix = [];
+$failed = [];
+
+foreach (PAIRS as [$client, $server]) {
+    foreach (['plaintext' => false, 'tls' => true] as $security => $tls) {
+        $column = "{$client}→{$server} {$security}";
+        $columns[] = $column;
+
+        // Otherwise a foreign server would answer for ours while ours fails to bind.
+        if (listening()) {
+            throw new RuntimeException('Port ' . PORT . ' is already in use.');
+        }
+
+        $process = Process::start(server($server, $tls));
+        $serverOutput = output($process);
+        awaitServer($process, $serverOutput);
+
+        foreach (CASES as $case) {
+            $key = "{$client}-{$server}/{$security}/{$case}";
+            $log = LOGS . '/' . str_replace('/', '-', $key) . '.log';
+
+            $start = hrtime(true);
+            $caseProcess = Process::start(client($client, $tls, $case));
+            $output = output($caseProcess);
+
+            try {
+                $exit = (string) $caseProcess->join(new TimeoutCancellation(CASE_TIMEOUT));
+            } catch (CancelledException) {
+                $caseProcess->kill();
+                $exit = 'timeout';
+            }
+
+            $elapsed = (hrtime(true) - $start) / 1_000_000_000;
+            file_put_contents($log, $output->await());
+            $matrix[$case][$column] = $exit === '0' ? 'pass' : 'FAIL';
+
+            if ($exit !== '0') {
+                $failed[$key] = $log;
+            }
+
+            fwrite(\STDERR, sprintf("%s: %s (exit %s, %.1fs)\n", $key, $matrix[$case][$column], $exit, $elapsed));
+        }
+
+        $process->signal(\SIGTERM);
+        $process->join();
+        file_put_contents(LOGS . "/server-{$server}-{$security}.log", $serverOutput->await());
+    }
+}
+
+$width = max(array_map(strlen(...), CASES));
+printf("\n%-{$width}s  %s\n", 'case', implode('  ', array_map(static fn(string $column) => mb_str_pad($column, 20), $columns)));
+
+foreach ($matrix as $case => $results) {
+    printf("%-{$width}s  %s\n", $case, implode('  ', array_map(static fn(string $result) => str_pad($result, 20), $results)));
+}
+
+foreach ($failed as $key => $log) {
+    printf("\n%s (%s):\n%s", $key, $log, tail((string) file_get_contents($log)));
+}
+
+exit($failed === [] ? 0 : 1);

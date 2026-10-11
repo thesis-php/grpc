@@ -41,6 +41,7 @@
     },
     "require-dev": {
         "ext-bcmath": "*",
+        "amphp/process": "^2.1",
         "phpunit/phpunit": "^12.4",
         "symfony/var-dumper": "^8.0",
         "thesis/grpc-client": "*@dev",
@@ -82,14 +83,17 @@
             "Chat\\Api\\V1\\": "tests/genproto/Chat/Api/V1/",
             "Echos\\Api\\V1\\": "tests/genproto/Echos/Api/V1/",
             "File\\Api\\V1\\": "tests/genproto/File/Api/V1/",
+            "Grpc\\Testing\\": "interop/genproto/Grpc/Testing/",
             "Thesis\\Grpc\\": "tests/",
+            "Thesis\\Grpc\\Interop\\": "interop/src/",
             "Topic\\Api\\V1\\": "tests/genproto/Topic/Api/V1/"
         },
         "files": [
             "tests/genproto/Echos/Api/V1/autoload.metadata.php",
             "tests/genproto/File/Api/V1/autoload.metadata.php",
             "tests/genproto/Topic/Api/V1/autoload.metadata.php",
-            "tests/genproto/Chat/Api/V1/autoload.metadata.php"
+            "tests/genproto/Chat/Api/V1/autoload.metadata.php",
+            "interop/genproto/Grpc/Testing/autoload.metadata.php"
         ]
     },
     "config": {

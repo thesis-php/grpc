@@ -14,6 +14,8 @@ $config = new Config()
             ->in(__DIR__ . '/packages/client/src')
             ->in(__DIR__ . '/packages/server/src')
             ->in(__DIR__ . '/tests')
+            ->in(__DIR__ . '/interop/src')
+            ->in(__DIR__ . '/interop/bin')
             ->exclude([
                 'genproto',
             ])

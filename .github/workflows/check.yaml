@@ -41,6 +41,13 @@ jobs:
       - uses: actions/checkout@v6
       - run: PHP_IMAGE_VERSION=${{ matrix.php }} make ${{ matrix.deps == 'lowest' && 'install-lowest' || '' }} test
 
+  interop:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v6
+      - run: make interop
+
   # infect:
   #   runs-on: ubuntu-latest
   #   steps:
