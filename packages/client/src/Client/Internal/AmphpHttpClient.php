@@ -6,7 +6,9 @@ namespace Thesis\Grpc\Client\Internal;
 
 use Amp\Cancellation;
 use Amp\CancelledException;
+use Amp\CompositeCancellation;
 use Amp\NullCancellation;
+use Amp\TimeoutCancellation;
 use Thesis\Google\Rpc\Code;
 use Thesis\Grpc\Client;
 use Thesis\Grpc\Client\PickContext;
@@ -47,7 +49,7 @@ final readonly class AmphpHttpClient implements Client
                 Cancellation $cancellation,
             ) use ($pick): object {
                 try {
-                    $stream = $this->connection->createStream($invoke, $md, $cancellation, $pick);
+                    $stream = $this->connection->createStream($invoke, $md, self::deadline($md, $cancellation), $pick);
                     $stream->send($request);
                     $stream->close();
 
@@ -83,7 +85,7 @@ final readonly class AmphpHttpClient implements Client
                 Cancellation $cancellation,
             ) use ($pick): ClientStream {
                 try {
-                    return $this->connection->createStream($invoke, $md, $cancellation, $pick);
+                    return $this->connection->createStream($invoke, $md, self::deadline($md, $cancellation), $pick);
                 } catch (CancelledException $e) {
                     throw CancellationError::from($e);
                 }
@@ -95,5 +97,16 @@ final readonly class AmphpHttpClient implements Client
     public function close(Cancellation $cancellation = new NullCancellation()): void
     {
         $this->connection->close($cancellation);
+    }
+
+    /**
+     * Like grpc-go, the client enforces the deadline it sends in "grpc-timeout" itself,
+     * so an expired call ends with DEADLINE_EXCEEDED rather than whatever the server does on its side.
+     */
+    private static function deadline(Metadata $md, Cancellation $cancellation): Cancellation
+    {
+        $timeout = Metadata\parseTimeout($md);
+
+        return $timeout !== null ? new CompositeCancellation($cancellation, new TimeoutCancellation($timeout->toSeconds())) : $cancellation;
     }
 }
