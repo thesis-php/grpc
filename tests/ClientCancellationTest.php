@@ -13,6 +13,7 @@ use Echos\Api\V1\EchoResponse;
 use Echos\Api\V1\EchoServiceClient;
 use Echos\Api\V1\EchoServiceServer;
 use Echos\Api\V1\EchoServiceServerRegistry;
+use File\Api\V1\FileServiceClient;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
 use Revolt\EventLoop;
@@ -111,6 +112,18 @@ final class ClientCancellationTest extends TestCase
         EventLoop::delay(0.1, static fn() => $cancellation->cancel());
 
         $error = self::catch(static fn() => $stream->receive());
+
+        self::assertSame(Code::CANCELLED, $error->statusCode);
+    }
+
+    public function testClientStreamCancellationBeforeCloseIsCancelled(): void
+    {
+        $cancellation = new DeferredCancellation();
+        $stream = new FileServiceClient(new Client\Builder()->withHost(self::ADDRESS)->build())
+            ->upload(cancellation: $cancellation->getCancellation());
+        $cancellation->cancel();
+
+        $error = self::catch($stream->close(...));
 
         self::assertSame(Code::CANCELLED, $error->statusCode);
     }

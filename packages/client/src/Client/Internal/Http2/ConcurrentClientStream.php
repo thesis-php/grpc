@@ -96,7 +96,12 @@ final class ConcurrentClientStream implements ClientStream
         }
 
         $this->send->complete();
-        $this->complete->await();
+
+        try {
+            $this->complete->await();
+        } catch (CancelledException $e) {
+            throw CancellationError::from($e);
+        }
     }
 
     #[\Override]
