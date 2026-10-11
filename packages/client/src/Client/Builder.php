@@ -348,11 +348,13 @@ final class Builder
             );
         }
 
+        $sockets = new Internal\TrackingSocketConnector($connector);
+
         $httpclient = $this->httpclient ?? new HttpClientBuilder()
             ->usingPool(ConnectionLimitingPool::byAuthority(
                 $this->connectionLimit,
                 new DefaultConnectionFactory(
-                    $connector,
+                    $sockets,
                     new ConnectContext()
                         ->withConnectTimeout($this->connectTimeout)
                         ->withTlsContext($tlsContext),
@@ -367,6 +369,7 @@ final class Builder
             new Connection\LazyConnection(
                 static fn() => new Connection\DefaultConnection(
                     target: $target,
+                    sockets: $sockets,
                     resolver: $resolver,
                     loadBalancerFactory: $loadBalancerFactory,
                     streams: new Http2\StreamFactory(
