@@ -43,6 +43,7 @@ interface ClientStream extends \IteratorAggregate
 
     /**
      * @throws ClientStreamIsClosed
+     * @throws InvokeError
      */
     public function close(): void;
 }
