@@ -19,7 +19,7 @@ $flags = Flags::parse([
 ]);
 
 $builder = new Server\Builder()
-    ->withAddresses("0.0.0.0:{$flags->int('port')}")
+    ->withAddresses("0.0.0.0:{$flags->int('port')}", "[::]:{$flags->int('port')}")
     ->withServices(new TestServiceServerRegistry(new TestService()))
     ->withUnaryInterceptors(new EchoMetadata());
 

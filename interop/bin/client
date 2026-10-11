@@ -29,7 +29,7 @@ $flags = Flags::parse([
 ]);
 
 $host = $flags->string('server_host');
-$address = "{$host}:{$flags->int('server_port')}";
+$address = (str_contains($host, ':') ? "[{$host}]" : $host) . ":{$flags->int('server_port')}";
 $metadata = AdditionalMetadata::parse($flags->string('additional_metadata'));
 
 $builder = new Client\Builder()
