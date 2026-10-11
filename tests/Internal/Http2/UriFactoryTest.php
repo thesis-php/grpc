@@ -20,6 +20,7 @@ final class UriFactoryTest extends TestCase
      * @param non-empty-string $address
      * @param non-empty-string $method
      * @param non-empty-string $uri
+     * @param ?non-empty-string $authority
      */
     #[TestWith([
         'http',
@@ -45,13 +46,21 @@ final class UriFactoryTest extends TestCase
         'test.api.v1.EchoController/Echo',
         'http://192.168.0.1:50051/test.api.v1.EchoController/Echo',
     ])]
+    #[TestWith([
+        'https',
+        '192.168.0.1:50051',
+        'test.api.v1.EchoController/Echo',
+        'https://echo.example.com:50051/test.api.v1.EchoController/Echo',
+        'echo.example.com:50051',
+    ])]
     public function testCreate(
         string $scheme,
         string $address,
         string $method,
         string $uri,
+        ?string $authority = null,
     ): void {
-        $factory = new UriFactory(HttpScheme::from($scheme));
+        $factory = new UriFactory(HttpScheme::from($scheme), $authority);
         $invoke = new Invoke($method, \stdClass::class, RpcType::Unary);
 
         self::assertSame($uri, $factory->create(new Address($address), $invoke));

@@ -90,6 +90,7 @@ final readonly class StreamFactory
             ),
         );
         $request->setProtocolVersions(['2']);
+        $request->setAttribute(Address::class, $address);
         $request->setHeaders(Http2\encodeMetadata($md));
         $request->setTransferTimeout($this->transferTimeout);
         $request->setInactivityTimeout($this->inactivityTimeout);

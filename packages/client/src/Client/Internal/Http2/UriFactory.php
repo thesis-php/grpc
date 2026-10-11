@@ -13,8 +13,12 @@ use Thesis\Grpc\Client\Invoke;
  */
 final readonly class UriFactory
 {
+    /**
+     * @param ?non-empty-string $authority the ":authority" of every call; the endpoint address when null
+     */
     public function __construct(
         private HttpScheme $scheme,
+        private ?string $authority,
     ) {}
 
     /**
@@ -22,6 +26,6 @@ final readonly class UriFactory
      */
     public function create(Address $address, Invoke $invoke): string
     {
-        return \sprintf('%s://%s/%s', $this->scheme->value, $address->value, ltrim($invoke->method, '/'));
+        return \sprintf('%s://%s/%s', $this->scheme->value, $this->authority ?? $address->value, ltrim($invoke->method, '/'));
     }
 }
