@@ -74,6 +74,14 @@ final readonly class StreamFactory
         /** @var DeferredFuture<null> $deferred */
         $deferred = new DeferredFuture();
 
+        /** @var DeferredFuture<null> $connected */
+        $connected = new DeferredFuture();
+        $markConnected = static function () use ($connected): void {
+            if (!$connected->isComplete()) {
+                $connected->complete();
+            }
+        };
+
         $request = new Request(
             uri: $this->uri->create($address, $invoke),
             method: 'POST',
@@ -95,15 +103,33 @@ final readonly class StreamFactory
         $request->addEventListener(
             new RequestEventListener()
                 ->onRequestBodyEnd($deferred->complete(...))  // @phpstan-ignore argument.type
-                ->onRequestFailed(static function (Request $request, \Throwable $e) use ($deferred): void {
+                ->onConnectionAcquired($markConnected)
+                // A custom HTTP client may respond without acquiring a connection.
+                ->onRequestEnd($markConnected)
+                ->onRequestFailed(static function (Request $request, \Throwable $e) use ($deferred, $connected): void {
                     if (!$deferred->isComplete()) {
                         $deferred->error($e);
+                    }
+
+                    if (!$connected->isComplete()) {
+                        $connected->error($e);
                     }
                 }),
         );
 
         /** @var Future<Response> $response */
         $response = async($this->http->request(...), $request, $cancellation);
+
+        // Like grpc-go, the call starts only on an established connection, so a failure to connect
+        // surfaces here, before anything is sent, and the caller can try another endpoint.
+        try {
+            $connected->getFuture()->await($cancellation);
+        } catch (\Throwable $e) {
+            $response->ignore();
+            $deferred->getFuture()->ignore();
+
+            throw $e;
+        }
 
         return new ConcurrentClientStream(
             responseFuture: $response,

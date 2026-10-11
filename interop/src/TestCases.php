@@ -180,9 +180,10 @@ final readonly class TestCases
 
     public function timeoutOnSleepingServer(): void
     {
-        $stream = $this->test->fullDuplexCall(new Metadata()->withKey(Metadata\Timeout::milliseconds(1)));
+        // Like grpc-go, the deadline may already expire while the call waits for a connection.
+        $error = self::error(function (): void {
+            $stream = $this->test->fullDuplexCall(new Metadata()->withKey(Metadata\Timeout::milliseconds(1)));
 
-        $error = self::error(static function () use ($stream): void {
             try {
                 $stream->send(new StreamingOutputCallRequest(payload: self::payload(27_182)));
             } catch (ClientStreamIsClosed) {
