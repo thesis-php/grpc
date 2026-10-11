@@ -13,12 +13,9 @@ use Echos\Api\V1\EchoServiceServerRegistry;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
-use Random\Engine;
-use Random\Randomizer;
 use Thesis\Google\Rpc\Code;
 use Thesis\Grpc\Client\Internal\AmphpHttpClient;
 use Thesis\Grpc\Client\Internal\Connection\DefaultConnection;
-use Thesis\Grpc\Client\LoadBalancer\PickFirstFactory;
 use Thesis\Grpc\Client\LoadBalancer\RoundRobin;
 use Thesis\Grpc\Client\LoadBalancer\RoundRobinFactory;
 
@@ -62,12 +59,7 @@ final class LoadBalancingTest extends TestCase
     #[DataProvider('providePickFirstSkipsUnreachableEndpointCases')]
     public function testPickFirstSkipsUnreachableEndpoint(string $target): void
     {
-        $client = new EchoServiceClient(
-            new Client\Builder()
-                ->withHost($target)
-                ->withLoadBalancer(new PickFirstFactory(self::unshuffled()))
-                ->build(),
-        );
+        $client = new EchoServiceClient(new Client\Builder()->withHost($target)->build());
 
         for ($i = 0; $i < 3; ++$i) {
             self::assertSame('[server-1] ping', $client->echo(new EchoRequest('ping'))->sentence);
@@ -112,20 +104,6 @@ final class LoadBalancingTest extends TestCase
 
         self::assertCount(5, array_filter($responses, static fn(string $s) => str_contains($s, 'server-1')));
         self::assertCount(5, array_filter($responses, static fn(string $s) => str_contains($s, 'server-2')));
-    }
-
-    /**
-     * The order of endpoints decides which one is tried first, so it must not be shuffled.
-     */
-    private static function unshuffled(): Randomizer
-    {
-        return new Randomizer(new readonly class implements Engine {
-            #[\Override]
-            public function generate(): string
-            {
-                return "\0\0\0\0\0\0\0\0";
-            }
-        });
     }
 }
 

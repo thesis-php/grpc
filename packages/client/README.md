@@ -120,7 +120,7 @@ When resolution returns multiple addresses, the load balancer picks endpoint per
 
 Built-in policies:
 
-- `PickFirstFactory` (default): shuffles endpoint list, picks one, and keeps it pinned until it disappears after refresh.
+- `PickFirstFactory` (default): picks the first endpoint in resolution order and keeps it pinned until it disappears after refresh or cannot be connected to, then moves to the next one.
 - `RoundRobinFactory`: cycles through all available endpoints.
 
 With DNS targets, resolver can re-resolve by TTL and call balancer `refresh()` with updated endpoints. Re-resolution interval is clamped between minimum and maximum bounds (default 30..300 seconds).
