@@ -42,6 +42,7 @@ final readonly class StreamFactory
 
     /**
      * @param Handle<*> $handle
+     * @param DeferredFuture<Metadata> $responseHeaders completes when the response headers must be sent
      * @return ServerStream<*, *>
      */
     public function create(
@@ -49,6 +50,7 @@ final readonly class StreamFactory
         Metadata $md,
         Request $request,
         Response $response,
+        DeferredFuture $responseHeaders,
         Cancellation $cancellation,
     ): ServerStream {
         /** @var Pipeline\Queue<object> $send */
@@ -66,6 +68,7 @@ final readonly class StreamFactory
             $md,
             $this->codec->decode($request->getBody(), $handle->type, $cancellation),
             $send,
+            $responseHeaders,
             $trailers,
         );
     }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc\Server;
 
+use Thesis\Grpc\Metadata;
 use Thesis\Grpc\ServerStream;
 
 /**
@@ -14,12 +15,20 @@ use Thesis\Grpc\ServerStream;
  */
 final readonly class BidirectionalStreamChannel implements \IteratorAggregate
 {
+    /** Can be modified before the first message is sent. */
+    public Metadata $responseHeaders;
+
+    public Metadata $trailers;
+
     /**
      * @param ServerStream<TRequest, TResponse> $stream
      */
     public function __construct(
         private ServerStream $stream,
-    ) {}
+    ) {
+        $this->responseHeaders = $stream->responseHeaders;
+        $this->trailers = $stream->trailers;
+    }
 
     /**
      * @no-named-arguments

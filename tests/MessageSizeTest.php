@@ -64,9 +64,7 @@ final class MessageSizeTest extends TestCase
 
     public function testServerStream(): void
     {
-        self::markTestSkipped('Corrupts and hangs until https://github.com/amphp/http-server/pull/396 is released.');
-
-        $server = self::server(new Server\Builder()); // @phpstan-ignore deadCode.unreachable (the test is skipped until the amphp fix is released)
+        $server = self::server(new Server\Builder());
 
         try {
             $events = iterator_to_array(new TopicServiceClient(new Client\Builder()->build())->subscribe(new SubscribeRequest('11')), preserve_keys: false);

@@ -7,6 +7,7 @@ namespace Thesis\Grpc\Server\Internal\Http2;
 use Amp\Cancellation;
 use Amp\CompositeCancellation;
 use Amp\DeferredCancellation;
+use Amp\DeferredFuture;
 use Amp\Future;
 use Amp\Http\HttpStatus;
 use Amp\Http\Server\Request;
@@ -140,7 +141,10 @@ final class ServerRequestHandler implements
             $this->maxReceiveMessageSize,
         );
 
-        $response = new Response(status: HttpStatus::OK, headers: Http2\encodeMetadata($headers));
+        $response = new Response(status: HttpStatus::OK);
+
+        /** @var DeferredFuture<Metadata> $responseHeaders */
+        $responseHeaders = new DeferredFuture();
 
         $cancellation = new DeferredCancellation();
 
@@ -160,10 +164,11 @@ final class ServerRequestHandler implements
             $md,
             $request,
             $response,
+            $responseHeaders,
             $streamCancellation,
         );
 
-        $info = new StreamInfo($rpc->handle->method, $rpc->type);
+        $info = new StreamInfo($rpc->handle->method, $rpc->type, $stream->responseHeaders, $stream->trailers);
         $rpcHandler = $rpc->handler;
 
         $terminal = match (true) {
@@ -231,6 +236,13 @@ final class ServerRequestHandler implements
                 public DeferredCancellation $cancellation,
             ) {}
         };
+
+        // Like grpc-go, the response headers are sent with the first message, so the handler can still set them.
+        // User metadata must not override the protocol headers.
+        $response->setHeaders(Http2\encodeMetadata(new Metadata([
+            ...$responseHeaders->getFuture()->await()->kv,
+            ...$headers->kv,
+        ])));
 
         return $response;
     }
