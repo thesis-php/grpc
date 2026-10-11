@@ -91,6 +91,36 @@ final class DnsResolverTest extends TestCase
         ];
     }
 
+    /**
+     * @param non-empty-string $target
+     */
+    #[DataProvider('provideResolveIpLiteralCases')]
+    public function testResolveIpLiteral(string $target, Endpoint $endpoint): void
+    {
+        $deferredCancellation = new DeferredCancellation();
+
+        $resolution = new DnsResolver()->resolve(
+            Target::parse($target),
+            self::createStub(EndpointResolverListener::class),
+            $deferredCancellation->getCancellation(),
+        );
+        $deferredCancellation->cancel();
+
+        self::assertEquals([$endpoint], $resolution->endpoints);
+    }
+
+    /**
+     * @return iterable<string, array{non-empty-string, Endpoint}>
+     */
+    public static function provideResolveIpLiteralCases(): iterable
+    {
+        yield 'IPv4' => ['127.0.0.1:50051', new Endpoint(new Address('127.0.0.1:50051'))];
+
+        yield 'IPv6' => ['[::1]:50051', new Endpoint(new Address('[::1]:50051'))];
+
+        yield 'IPv6 with dns scheme' => ['dns:///[::1]:50051', new Endpoint(new Address('[::1]:50051'))];
+    }
+
     public function testResolveListener(): void
     {
         $deferredCancellation = new DeferredCancellation();

@@ -77,7 +77,8 @@ final readonly class DnsResolver implements EndpointResolver
         $ttl = null;
 
         foreach ($target->addresses as $address) {
-            $records = $resolver->resolve($address->host, cancellation: $cancellation);
+            // An IPv6 literal keeps its brackets in the target; without them amphp returns it as is, like grpc-go.
+            $records = $resolver->resolve(trim($address->host, '[]'), cancellation: $cancellation);
 
             foreach ($records as $record) {
                 $ip = $record->getValue();
