@@ -16,7 +16,6 @@ use Grpc\Testing\StreamingOutputCallRequest;
 use Grpc\Testing\StreamingOutputCallResponse;
 use Grpc\Testing\TestServiceClient;
 use Grpc\Testing\UnimplementedServiceClient;
-use PHPUnit\Framework\Assert;
 use Thesis\Google\Rpc\Code;
 use Thesis\Grpc\Client;
 use Thesis\Grpc\ClientStream;
@@ -65,7 +64,7 @@ final readonly class TestCases
     {
         $response = $this->test->unaryCall(new SimpleRequest(responseSize: 314_159, payload: self::payload(271_828)));
 
-        Assert::assertSame(314_159, self::size($response->payload));
+        self::assertSame(314_159, self::size($response->payload));
     }
 
     public function clientStreaming(): void
@@ -76,7 +75,7 @@ final readonly class TestCases
             [27_182, 8, 1_828, 45_904],
         ));
 
-        Assert::assertSame(74_922, $stream->close()->aggregatedPayloadSize);
+        self::assertSame(74_922, $stream->close()->aggregatedPayloadSize);
     }
 
     public function serverStreaming(): void
@@ -87,7 +86,7 @@ final readonly class TestCases
             responseParameters: array_map(static fn(int $size) => new ResponseParameters($size), $sizes),
         ));
 
-        Assert::assertSame($sizes, self::sizes($stream));
+        self::assertSame($sizes, self::sizes($stream));
     }
 
     public function pingPong(): void
@@ -100,12 +99,12 @@ final readonly class TestCases
                 payload: self::payload($requestSize),
             ));
 
-            Assert::assertSame($responseSize, self::size($stream->receive()->payload));
+            self::assertSame($responseSize, self::size($stream->receive()->payload));
         }
 
         $stream->close();
 
-        Assert::assertSame([], self::sizes($stream));
+        self::assertSame([], self::sizes($stream));
     }
 
     public function emptyStream(): void
@@ -113,7 +112,7 @@ final readonly class TestCases
         $stream = $this->test->fullDuplexCall();
         $stream->close();
 
-        Assert::assertSame([], self::sizes($stream));
+        self::assertSame([], self::sizes($stream));
     }
 
     public function statusCodeAndMessage(): void
@@ -121,7 +120,7 @@ final readonly class TestCases
         $status = new EchoStatus(Code::UNKNOWN->value, self::STATUS_MESSAGE);
 
         $error = self::error(fn() => $this->test->unaryCall(new SimpleRequest(responseStatus: $status)));
-        Assert::assertSame([Code::UNKNOWN, self::STATUS_MESSAGE], [$error->statusCode, $error->statusMessage]);
+        self::assertSame([Code::UNKNOWN, self::STATUS_MESSAGE], [$error->statusCode, $error->statusMessage]);
 
         $error = self::error(function () use ($status): void {
             $stream = $this->test->fullDuplexCall();
@@ -129,7 +128,7 @@ final readonly class TestCases
             $stream->close();
             self::sizes($stream);
         });
-        Assert::assertSame([Code::UNKNOWN, self::STATUS_MESSAGE], [$error->statusCode, $error->statusMessage]);
+        self::assertSame([Code::UNKNOWN, self::STATUS_MESSAGE], [$error->statusCode, $error->statusMessage]);
     }
 
     public function specialStatusMessage(): void
@@ -138,21 +137,21 @@ final readonly class TestCases
             responseStatus: new EchoStatus(Code::UNKNOWN->value, self::SPECIAL_STATUS_MESSAGE),
         )));
 
-        Assert::assertSame([Code::UNKNOWN, self::SPECIAL_STATUS_MESSAGE], [$error->statusCode, $error->statusMessage]);
+        self::assertSame([Code::UNKNOWN, self::SPECIAL_STATUS_MESSAGE], [$error->statusCode, $error->statusMessage]);
     }
 
     public function unimplementedMethod(): void
     {
         $error = self::error(fn() => $this->test->unimplementedCall(new Empty_()));
 
-        Assert::assertSame(Code::UNIMPLEMENTED, $error->statusCode);
+        self::assertSame(Code::UNIMPLEMENTED, $error->statusCode);
     }
 
     public function unimplementedService(): void
     {
         $error = self::error(fn() => new UnimplementedServiceClient($this->client)->unimplementedCall(new Empty_()));
 
-        Assert::assertSame(Code::UNIMPLEMENTED, $error->statusCode);
+        self::assertSame(Code::UNIMPLEMENTED, $error->statusCode);
     }
 
     public function cancelAfterBegin(): void
@@ -161,7 +160,7 @@ final readonly class TestCases
         $stream = $this->test->streamingInputCall(cancellation: $cancellation->getCancellation());
         $cancellation->cancel();
 
-        Assert::assertSame(Code::CANCELLED, self::error($stream->close(...))->statusCode);
+        self::assertSame(Code::CANCELLED, self::error($stream->close(...))->statusCode);
     }
 
     public function cancelAfterFirstResponse(): void
@@ -175,7 +174,7 @@ final readonly class TestCases
         $stream->receive();
         $cancellation->cancel();
 
-        Assert::assertSame(Code::CANCELLED, self::error($stream->receive(...))->statusCode);
+        self::assertSame(Code::CANCELLED, self::error($stream->receive(...))->statusCode);
     }
 
     public function timeoutOnSleepingServer(): void
@@ -193,7 +192,7 @@ final readonly class TestCases
             $stream->receive();
         });
 
-        Assert::assertSame(Code::DEADLINE_EXCEEDED, $error->statusCode);
+        self::assertSame(Code::DEADLINE_EXCEEDED, $error->statusCode);
     }
 
     public function customMetadata(): void
@@ -211,7 +210,7 @@ final readonly class TestCases
         $stream->send(new SimpleRequest(responseSize: 314_159, payload: self::payload(271_828)));
         $stream->close();
 
-        Assert::assertSame(314_159, self::size($stream->receive()->payload));
+        self::assertSame(314_159, self::size($stream->receive()->payload));
         self::assertEchoedMetadata($stream);
 
         $stream = $this->client->createStream(
@@ -224,7 +223,7 @@ final readonly class TestCases
         ));
         $stream->close();
 
-        Assert::assertSame([314_159], self::sizes($stream));
+        self::assertSame([314_159], self::sizes($stream));
         self::assertEchoedMetadata($stream);
     }
 
@@ -248,7 +247,7 @@ final readonly class TestCases
         $responseSize = $this->flags->int('soak_response_size');
         $deadline = hrtime(true) + $this->flags->int('soak_overall_timeout_seconds') * 1_000_000_000;
 
-        Assert::assertSame(0, $iterations % $threads, 'soak_iterations must be divisible by soak_num_threads.');
+        self::assertSame(0, $iterations % $threads, 'soak_iterations must be divisible by soak_num_threads.');
 
         $results = await(array_map(fn(int $thread) => async(function () use (
             $thread,
@@ -307,8 +306,13 @@ final readonly class TestCases
             return [$i, $failures];
         }), range(0, $threads - 1)));
 
-        Assert::assertSame($iterations, array_sum(array_column($results, 0)), 'Soak test did not complete all iterations in time.');
-        Assert::assertLessThanOrEqual($this->flags->int('soak_max_failures'), array_sum(array_column($results, 1)), 'Soak test failures exceeded soak_max_failures.');
+        self::assertSame($iterations, array_sum(array_column($results, 0)), 'Soak test did not complete all iterations in time.');
+
+        $failures = array_sum(array_column($results, 1));
+
+        if ($failures > $this->flags->int('soak_max_failures')) {
+            throw new \UnexpectedValueException("Soak test failures {$failures} exceeded soak_max_failures {$this->flags->int('soak_max_failures')}.");
+        }
     }
 
     /**
@@ -322,7 +326,14 @@ final readonly class TestCases
             return $e;
         }
 
-        Assert::fail('The call was expected to fail with a status.');
+        throw new \UnexpectedValueException('The call was expected to fail with a status.');
+    }
+
+    private static function assertSame(mixed $expected, mixed $actual, string $message = 'Unexpected value.'): void
+    {
+        if ($expected !== $actual) {
+            throw new \UnexpectedValueException(\sprintf("%s\nExpected: %s\nActual: %s", $message, var_export($expected, true), var_export($actual, true)));
+        }
     }
 
     /**
@@ -330,8 +341,8 @@ final readonly class TestCases
      */
     private static function assertEchoedMetadata(ClientStream $stream): void
     {
-        Assert::assertSame([self::INITIAL_METADATA_VALUE], $stream->headers()[self::INITIAL_METADATA_KEY]);
-        Assert::assertSame([self::TRAILING_METADATA_VALUE], $stream->trailers()[self::TRAILING_METADATA_KEY]);
+        self::assertSame([self::INITIAL_METADATA_VALUE], $stream->headers()[self::INITIAL_METADATA_KEY]);
+        self::assertSame([self::TRAILING_METADATA_VALUE], $stream->trailers()[self::TRAILING_METADATA_KEY]);
     }
 
     private static function payload(int $size): Payload
