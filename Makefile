@@ -148,7 +148,7 @@ compile-test-stub:
         tests/protos/*.proto
 .PHONY: compile-test-stub
 
-compile-interop-stub:
+compile-interop-stub: fetch-interop-protos
 	docker run --rm \
 		--pull always \
 	    --user $(CONTAINER_USER) \
@@ -159,6 +159,17 @@ compile-interop-stub:
         --php-plugin_out=interop/genproto \
         interop/protos/src/proto/grpc/testing/*.proto
 .PHONY: compile-interop-stub
+
+INTEROP_GRPC_COMMIT = 816d41355f831fdaec27e3d4cb4e5d3fe0d55637
+
+fetch-interop-protos: ## Fetch interop protos and TLS test credentials from grpc/grpc at INTEROP_GRPC_COMMIT
+	for f in empty messages test; do \
+		curl --fail --silent --location --output interop/protos/src/proto/grpc/testing/$$f.proto https://raw.githubusercontent.com/grpc/grpc/$(INTEROP_GRPC_COMMIT)/src/proto/grpc/testing/$$f.proto || exit 1; \
+	done
+	for f in ca.pem server1.pem server1.key; do \
+		curl --fail --silent --location --output interop/tls/$$f https://raw.githubusercontent.com/grpc/grpc/$(INTEROP_GRPC_COMMIT)/src/core/tsi/test_creds/$$f || exit 1; \
+	done
+.PHONY: fetch-interop-protos
 # -----------------------
 
 help:
