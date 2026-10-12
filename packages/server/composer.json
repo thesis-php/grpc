@@ -24,7 +24,7 @@
         "amphp/socket": "^2.3",
         "amphp/sync": "^2.3",
         "psr/log": "^3.0",
-        "thesis/grpc-protocol": "^0.3"
+        "thesis/grpc-protocol": "^0.4"
     },
     "autoload": {
         "psr-4": {
