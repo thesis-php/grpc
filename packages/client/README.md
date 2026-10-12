@@ -114,13 +114,18 @@ Multi-endpoint target without DNS:
 ->withHost('ipv4:10.0.0.1:50051,10.0.0.2:50051,10.0.0.3:50051')
 ```
 
+The `:authority` of every call comes from the target, not from the resolved address, like in grpc-go:
+the peer name of the transport credentials if set, `localhost` for `unix`, otherwise the target address,
+or the first one when the target lists several. A client passed to `withHttpClient()` keeps receiving
+the resolved address as the authority.
+
 ## Load balancing
 
 When resolution returns multiple addresses, the load balancer picks endpoint per RPC.
 
 Built-in policies:
 
-- `PickFirstFactory` (default): shuffles endpoint list, picks one, and keeps it pinned until it disappears after refresh.
+- `PickFirstFactory` (default): picks the first endpoint in resolution order and keeps it pinned until it disappears after refresh or cannot be connected to, then moves to the next one.
 - `RoundRobinFactory`: cycles through all available endpoints.
 
 With DNS targets, resolver can re-resolve by TTL and call balancer `refresh()` with updated endpoints. Re-resolution interval is clamped between minimum and maximum bounds (default 30..300 seconds).

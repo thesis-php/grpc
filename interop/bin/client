@@ -1,0 +1,71 @@
+#!/usr/bin/env php
+<?php
+
+declare(strict_types=1);
+
+use Thesis\Grpc\Client;
+use Thesis\Grpc\Interop\AdditionalMetadata;
+use Thesis\Grpc\Interop\Flags;
+use Thesis\Grpc\Interop\TestCases;
+
+require_once __DIR__ . '/../../vendor/autoload.php';
+
+$flags = Flags::parse([
+    'server_host' => 'localhost',
+    'server_host_override' => '',
+    'server_port' => '10000',
+    'test_case' => 'large_unary',
+    'use_tls' => 'false',
+    'use_test_ca' => 'false',
+    'additional_metadata' => '',
+    'soak_iterations' => '10',
+    'soak_max_failures' => '0',
+    'soak_per_iteration_max_acceptable_latency_ms' => '1000',
+    'soak_overall_timeout_seconds' => '10',
+    'soak_min_time_ms_between_rpcs' => '0',
+    'soak_request_size' => '271828',
+    'soak_response_size' => '314159',
+    'soak_num_threads' => '1',
+]);
+
+$host = $flags->string('server_host');
+$address = (str_contains($host, ':') ? "[{$host}]" : $host) . ":{$flags->int('server_port')}";
+$metadata = AdditionalMetadata::parse($flags->string('additional_metadata'));
+
+$builder = new Client\Builder()
+    ->withHost($address)
+    ->withInterceptors($metadata);
+
+if ($flags->bool('use_tls')) {
+    $credentials = new Client\TransportCredentials()->withPeerName($flags->string('server_host_override') !== '' ? $flags->string('server_host_override') : $host);
+
+    if ($flags->bool('use_test_ca')) {
+        $credentials = $credentials->withCaCert(__DIR__ . '/../tls/ca.pem');
+    }
+
+    $builder = $builder->withTransportCredentials($credentials);
+}
+
+$cases = new TestCases($builder->build(...), $flags, $address);
+
+match ($flags->string('test_case')) {
+    'empty_unary' => $cases->emptyUnary(),
+    'large_unary' => $cases->largeUnary(),
+    'client_streaming' => $cases->clientStreaming(),
+    'server_streaming' => $cases->serverStreaming(),
+    'ping_pong' => $cases->pingPong(),
+    'empty_stream' => $cases->emptyStream(),
+    'status_code_and_message' => $cases->statusCodeAndMessage(),
+    'special_status_message' => $cases->specialStatusMessage(),
+    'unimplemented_method' => $cases->unimplementedMethod(),
+    'unimplemented_service' => $cases->unimplementedService(),
+    'cancel_after_begin' => $cases->cancelAfterBegin(),
+    'cancel_after_first_response' => $cases->cancelAfterFirstResponse(),
+    'timeout_on_sleeping_server' => $cases->timeoutOnSleepingServer(),
+    'custom_metadata' => $cases->customMetadata(),
+    'rpc_soak' => $cases->rpcSoak(),
+    'channel_soak' => $cases->channelSoak(),
+    default => throw new InvalidArgumentException("Unsupported test case \"{$flags->string('test_case')}\"."),
+};
+
+echo "{$flags->string('test_case')}: passed\n";

@@ -8,6 +8,11 @@ use Amp\Cancellation;
 use Amp\CancelledException;
 use Amp\DeferredCancellation;
 use Amp\TimeoutCancellation;
+use Chat\Api\V1\Message;
+use Chat\Api\V1\MessengerServiceClient;
+use Chat\Api\V1\MessengerServiceServer;
+use Chat\Api\V1\MessengerServiceServerRegistry;
+use Composer\InstalledVersions;
 use Echos\Api\V1\EchoRequest;
 use Echos\Api\V1\EchoResponse;
 use Echos\Api\V1\EchoServiceClient;
@@ -15,6 +20,7 @@ use Echos\Api\V1\EchoServiceServer;
 use Echos\Api\V1\EchoServiceServerRegistry;
 use File\Api\V1\FileServiceClient;
 use PHPUnit\Framework\Attributes\CoversClass;
+use PHPUnit\Framework\Attributes\DataProvider;
 use PHPUnit\Framework\TestCase;
 use Revolt\EventLoop;
 use Thesis\Google\Protobuf\Timestamp;
@@ -28,12 +34,15 @@ use Thesis\Grpc\Client\Internal\CancellationError;
 use Thesis\Grpc\Client\Internal\Http2\ConcurrentClientStream;
 use Thesis\Grpc\Client\Resolution;
 use Thesis\Grpc\Client\Target;
+use Thesis\Grpc\Server\BidirectionalStreamChannel;
 use Topic\Api\V1\Event;
 use Topic\Api\V1\SubscribeRequest;
 use Topic\Api\V1\TopicServiceClient;
 use Topic\Api\V1\TopicServiceServer;
 use Topic\Api\V1\TopicServiceServerRegistry;
+use function Amp\async;
 use function Amp\delay;
+use function Amp\Socket\listen;
 
 #[CoversClass(AmphpHttpClient::class)]
 #[CoversClass(ConcurrentClientStream::class)]
@@ -41,6 +50,7 @@ use function Amp\delay;
 final class ClientCancellationTest extends TestCase
 {
     private const string ADDRESS = '127.0.0.1:50072';
+    private const string SILENT_ADDRESS = '127.0.0.1:50073';
 
     private Server $server;
 
@@ -51,6 +61,7 @@ final class ClientCancellationTest extends TestCase
             ->withServices(
                 new EchoServiceServerRegistry(new SlowEchoServer()),
                 new TopicServiceServerRegistry(new SlowTopicServer()),
+                new MessengerServiceServerRegistry(new SilentMessengerServer()),
             )
             ->build();
 
@@ -128,6 +139,73 @@ final class ClientCancellationTest extends TestCase
         self::assertSame(Code::CANCELLED, $error->statusCode);
     }
 
+    /**
+     * The server accepts the connection and never answers, so only the client can enforce the deadline it sends.
+     *
+     * @param \Closure(Client, Metadata, Cancellation): mixed $call
+     */
+    #[DataProvider('provideDeadlineFromHeaderIsEnforcedByClientCases')]
+    public function testDeadlineFromHeaderIsEnforcedByClient(\Closure $call): void
+    {
+        $server = listen(self::SILENT_ADDRESS);
+        $sockets = [];
+        async(static function () use ($server, &$sockets): void {
+            while (($socket = $server->accept()) !== null) {
+                $sockets[] = $socket;
+            }
+        })->ignore();
+
+        $start = hrtime(true);
+
+        try {
+            $error = self::catch(static fn() => $call(
+                new Client\Builder()->withHost(self::SILENT_ADDRESS)->build(),
+                new Metadata()->withKey(Metadata\Timeout::milliseconds(100)),
+                new TimeoutCancellation(5),
+            ));
+        } finally {
+            $server->close();
+        }
+
+        self::assertSame(Code::DEADLINE_EXCEEDED, $error->statusCode);
+        self::assertLessThan(1, (hrtime(true) - $start) / 1_000_000_000);
+    }
+
+    /**
+     * @return iterable<array-key, array{\Closure(Client, Metadata, Cancellation): mixed}>
+     */
+    public static function provideDeadlineFromHeaderIsEnforcedByClientCases(): iterable
+    {
+        yield 'unary' => [
+            static fn(Client $client, Metadata $md, Cancellation $cancellation) => new EchoServiceClient($client)
+                ->echo(new EchoRequest('ping'), $md, $cancellation),
+        ];
+
+        yield 'stream' => [
+            static fn(Client $client, Metadata $md, Cancellation $cancellation) => new MessengerServiceClient($client)
+                ->chat($md, $cancellation)
+                ->receive(),
+        ];
+    }
+
+    public function testClientCloseCancelsActiveStream(): void
+    {
+        if (version_compare(InstalledVersions::getVersion('amphp/http-client') ?? '', '5.3.7', '<')) {
+            self::markTestSkipped('amphp/http-client < 5.3.7 throws UnhandledFutureError from Http2Stream::$requestBodyCompletion when a connection with an active stream is closed, fixed upstream in 423f023.');
+        }
+
+        $client = new Client\Builder()->withHost(self::ADDRESS)->build();
+        $stream = new MessengerServiceClient($client)->chat();
+        $stream->send(new Message('hello'));
+
+        $receive = async($stream->receive(...));
+        delay(0.1);
+
+        $client->close();
+
+        self::assertSame(Code::CANCELLED, self::catch($receive->await(...))->statusCode);
+    }
+
     public function testStreamIterationDeadlineIsDeadlineExceeded(): void
     {
         $stream = self::topicClient()->subscribe(new SubscribeRequest('events'), cancellation: new TimeoutCancellation(0.2));
@@ -184,6 +262,15 @@ final readonly class SlowTopicServer implements TopicServiceServer
         yield new Event('first', '', new Timestamp(1));
         delay(1, cancellation: $cancellation);
         yield new Event('second', '', new Timestamp(2));
+    }
+}
+
+final readonly class SilentMessengerServer implements MessengerServiceServer
+{
+    #[\Override]
+    public function chat(BidirectionalStreamChannel $stream, Metadata $md, Cancellation $cancellation): void
+    {
+        foreach ($stream as $_);
     }
 }
 

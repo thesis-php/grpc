@@ -8,6 +8,7 @@ return Rector\Config\RectorConfig::configure()
         __DIR__ . '/packages/client/src',
         __DIR__ . '/packages/server/src',
         __DIR__ . '/tests',
+        __DIR__ . '/interop/bin',
     ])
     ->withParallel()
     ->withCache(__DIR__ . '/var/rector')

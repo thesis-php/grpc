@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace Thesis\Grpc\Client\LoadBalancer;
 
-use Random\Randomizer;
 use Thesis\Grpc\Client\Endpoint;
 use Thesis\Grpc\Client\LoadBalancer;
 use Thesis\Grpc\Client\PickContext;
@@ -21,16 +20,18 @@ final class PickFirst implements LoadBalancer
      */
     public function __construct(
         private array $endpoints,
-        private readonly Randomizer $randomizer,
     ) {
-        $this->current = $this->doPick($endpoints);
+        $this->current = $endpoints[0];
     }
 
     #[\Override]
     public function refresh(array $endpoints): void
     {
         $this->endpoints = $endpoints;
-        $this->current = $this->doPick($endpoints, $this->current);
+
+        if (!array_any($endpoints, $this->current->equals(...))) {
+            $this->current = $endpoints[0];
+        }
     }
 
     #[\Override]
@@ -44,20 +45,5 @@ final class PickFirst implements LoadBalancer
         }
 
         return $this->current;
-    }
-
-    /**
-     * @param non-empty-list<Endpoint> $endpoints
-     */
-    private function doPick(array $endpoints, ?Endpoint $current = null): Endpoint
-    {
-        /** @var non-empty-list<Endpoint> $endpoints */
-        $endpoints = $this->randomizer->shuffleArray($endpoints);
-
-        if ($current === null || !array_any($endpoints, $current->equals(...))) {
-            $current = $endpoints[0];
-        }
-
-        return $current;
     }
 }

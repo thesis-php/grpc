@@ -5,14 +5,13 @@ declare(strict_types=1);
 namespace Thesis\Grpc\Client\Internal;
 
 use Amp\Cancellation;
-use Amp\CancelledException;
+use Amp\CompositeCancellation;
 use Amp\NullCancellation;
-use Thesis\Google\Rpc\Code;
+use Amp\TimeoutCancellation;
 use Thesis\Grpc\Client;
 use Thesis\Grpc\Client\PickContext;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\GrpcException;
-use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
 
 /**
@@ -46,6 +45,8 @@ final readonly class AmphpHttpClient implements Client
                 Metadata $md,
                 Cancellation $cancellation,
             ) use ($pick): object {
+                $cancellation = self::deadline($md, $cancellation);
+
                 try {
                     $stream = $this->connection->createStream($invoke, $md, $cancellation, $pick);
                     $stream->send($request);
@@ -54,12 +55,8 @@ final readonly class AmphpHttpClient implements Client
                     return $stream->receive();
                 } catch (GrpcException $e) {
                     throw $e;
-                } catch (CancelledException $e) {
-                    throw CancellationError::from($e);
                 } catch (\Throwable $e) {
-                    // Transport-level failures (e.g. a refused connection) map to UNAVAILABLE,
-                    // so interceptors above see a gRPC status rather than a raw amphp exception.
-                    throw new InvokeError(Code::UNAVAILABLE, $e->getMessage(), previous: $e);
+                    throw TransportError::from($e, $cancellation);
                 }
             },
         );
@@ -82,10 +79,12 @@ final readonly class AmphpHttpClient implements Client
                 Metadata $md,
                 Cancellation $cancellation,
             ) use ($pick): ClientStream {
+                $cancellation = self::deadline($md, $cancellation);
+
                 try {
                     return $this->connection->createStream($invoke, $md, $cancellation, $pick);
-                } catch (CancelledException $e) {
-                    throw CancellationError::from($e);
+                } catch (\Throwable $e) {
+                    throw TransportError::from($e, $cancellation);
                 }
             },
         );
@@ -95,5 +94,16 @@ final readonly class AmphpHttpClient implements Client
     public function close(Cancellation $cancellation = new NullCancellation()): void
     {
         $this->connection->close($cancellation);
+    }
+
+    /**
+     * Like grpc-go, the client enforces the deadline it sends in "grpc-timeout" itself,
+     * so an expired call ends with DEADLINE_EXCEEDED rather than whatever the server does on its side.
+     */
+    private static function deadline(Metadata $md, Cancellation $cancellation): Cancellation
+    {
+        $timeout = Metadata\parseTimeout($md);
+
+        return $timeout !== null ? new CompositeCancellation($cancellation, new TimeoutCancellation($timeout->toSeconds())) : $cancellation;
     }
 }

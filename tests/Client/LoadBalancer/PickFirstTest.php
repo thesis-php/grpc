@@ -118,6 +118,19 @@ final class PickFirstTest extends TestCase
         ];
     }
 
+    public function testPickFollowsResolutionOrder(): void
+    {
+        $a = new Endpoint(new Address('10.0.0.1:50051'));
+        $b = new Endpoint(new Address('10.0.0.2:50051'));
+        $c = new Endpoint(new Address('10.0.0.3:50051'));
+
+        $balancer = new PickFirstFactory()->create([$b, $a]);
+        self::assertTrue($b->equals($balancer->pick(self::context())));
+
+        $balancer->refresh([$c, $a]);
+        self::assertTrue($c->equals($balancer->pick(self::context())));
+    }
+
     public function testPickFailsOverToALiveEndpointWhenPinnedIsExcluded(): void
     {
         $a = new Endpoint(new Address('10.0.0.1:50051'));

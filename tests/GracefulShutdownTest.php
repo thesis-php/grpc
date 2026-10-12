@@ -14,6 +14,7 @@ use Echos\Api\V1\EchoServiceServer;
 use Echos\Api\V1\EchoServiceServerRegistry;
 use PHPUnit\Framework\Attributes\CoversClass;
 use PHPUnit\Framework\TestCase;
+use Thesis\Google\Rpc\Code;
 use Thesis\Grpc\Server\Internal\AmphpHttpServer;
 use function Amp\async;
 use function Amp\delay;
@@ -52,7 +53,12 @@ final class GracefulShutdownTest extends TestCase
         $this->server->stop();
         $failFuture = async($client->echo(...), new EchoRequest('Hello, gRPC'));
         self::assertEquals(new EchoResponse('Hello, gRPC'), $successFuture->await());
-        $this->expectExceptionMessage("Connection to '127.0.0.1:50051' failed");
-        $failFuture->await();
+
+        try {
+            $failFuture->await();
+            self::fail('Expected an InvokeError.');
+        } catch (InvokeError $e) {
+            self::assertSame(Code::UNAVAILABLE, $e->statusCode);
+        }
     }
 }

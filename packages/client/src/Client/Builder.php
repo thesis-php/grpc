@@ -8,6 +8,7 @@ use Amp\Http\Client\Connection\ConnectionLimitingPool;
 use Amp\Http\Client\Connection\DefaultConnectionFactory;
 use Amp\Http\Client\DelegateHttpClient;
 use Amp\Http\Client\HttpClientBuilder;
+use Amp\Socket\ClientTlsContext;
 use Amp\Socket\ConnectContext;
 use Amp\Socket\DnsSocketConnector;
 use Amp\Socket\SocketConnector;
@@ -305,7 +306,9 @@ final class Builder
         $protobuf = $this->protobuf ?? Decoder\Builder::buildDefault();
         $loadBalancerFactory = $this->loadBalancerFactory ?? new LoadBalancer\PickFirstFactory();
         $tlsContext = $this->credentials?->createContext();
-        $uriFactory = new Http2\UriFactory($tlsContext !== null ? Internal\HttpScheme::Https : Internal\HttpScheme::Http);
+        $scheme = $tlsContext !== null ? Internal\HttpScheme::Https : Internal\HttpScheme::Http;
+        // A custom HTTP client knows nothing about endpoints, so it gets the endpoint address in the URI as before.
+        $uriFactory = new Http2\UriFactory($scheme, $this->httpclient === null ? self::authority($target, $tlsContext) : null);
         $transferTimeout = $this->transferTimeout;
         $inactivityTimeout = $this->inactivityTimeout;
         $maxReceiveMessageSize = $this->maxReceiveMessageSize;
@@ -348,16 +351,22 @@ final class Builder
             );
         }
 
+        $sockets = new Internal\TrackingSocketConnector($connector);
+
+        $connectContext = new ConnectContext()
+            ->withConnectTimeout($this->connectTimeout)
+            ->withTlsContext($tlsContext);
+        $connectionLimit = $this->connectionLimit;
+
         $httpclient = $this->httpclient ?? new HttpClientBuilder()
-            ->usingPool(ConnectionLimitingPool::byAuthority(
-                $this->connectionLimit,
-                new DefaultConnectionFactory(
-                    $connector,
-                    new ConnectContext()
-                        ->withConnectTimeout($this->connectTimeout)
-                        ->withTlsContext($tlsContext),
+            ->usingPool(new Http2\EndpointConnectionPool(
+                static fn(Address $address) => ConnectionLimitingPool::byAuthority(
+                    $connectionLimit,
+                    new DefaultConnectionFactory(new Internal\AddressSocketConnector($sockets, $address), $connectContext),
                 ),
             ))
+            // A gRPC request body is streamed once, so amphp cannot replay a request it was told was left unprocessed.
+            ->retry(0)
             ->skipDefaultUserAgent()
             ->skipAutomaticCompression()
             ->skipDefaultAcceptHeader()
@@ -380,10 +389,28 @@ final class Builder
                         maxReceiveMessageSize: $maxReceiveMessageSize,
                         compressors: $compressors,
                     ),
+                    sockets: $sockets,
                 ),
             ),
             $unary,
             $stream,
         );
+    }
+
+    /**
+     * Like grpc-go: the server name of the transport credentials, "localhost" for a Unix socket,
+     * otherwise the target itself, or its first address when it lists several.
+     *
+     * @return non-empty-string
+     */
+    private static function authority(Target $target, ?ClientTlsContext $tlsContext): string
+    {
+        $peerName = $tlsContext?->getPeerName() ?? '';
+
+        return match (true) {
+            $peerName !== '' => $peerName,
+            $target->scheme === Scheme::Unix->value => 'localhost',
+            default => (string) $target->addresses[0],
+        };
     }
 }

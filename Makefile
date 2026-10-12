@@ -107,6 +107,10 @@ test: var vendor compile-test-stub ## Run tests using PHPUnit
 	$(RUN) vendor/bin/phpunit $(ARGS) --colors
 .PHONY: test
 
+interop: var vendor ## Run gRPC interop tests against grpc-go
+	$(DOCKER_COMPOSE) --profile interop run --rm --build interop php interop/bin/matrix $(ARGS)
+.PHONY: interop
+
 infect: var vendor up ## Run mutation tests using Infection
 	$(RUN) infection --show-mutations $(ARGS)
 .PHONY: infect
@@ -130,7 +134,7 @@ composer-normalize-check: ## Check that composer.json is normalized
 fix: fixer rector composer-normalize ## Run all fixing recipes
 .PHONY: fix
 
-check: fixer-check rector-check composer-validate composer-normalize-check deps-analyze phpstan test  ## Run all project checks
+check: fixer-check rector-check composer-validate composer-normalize-check deps-analyze phpstan test interop  ## Run all project checks
 .PHONY: check
 
 compile-test-stub:
@@ -143,6 +147,29 @@ compile-test-stub:
         --php-plugin_out=tests/genproto \
         tests/protos/*.proto
 .PHONY: compile-test-stub
+
+compile-interop-stub: fetch-interop-protos
+	docker run --rm \
+		--pull always \
+	    --user $(CONTAINER_USER) \
+        -v $(PWD):/workspace \
+        -w /workspace \
+        ghcr.io/thesis-php/protoc-plugin:latest \
+        -I interop/protos \
+        --php-plugin_out=interop/genproto \
+        interop/protos/src/proto/grpc/testing/*.proto
+.PHONY: compile-interop-stub
+
+INTEROP_GRPC_COMMIT = 816d41355f831fdaec27e3d4cb4e5d3fe0d55637
+
+fetch-interop-protos: ## Fetch interop protos and TLS test credentials from grpc/grpc at INTEROP_GRPC_COMMIT
+	for f in empty messages test; do \
+		curl --fail --silent --location --output interop/protos/src/proto/grpc/testing/$$f.proto https://raw.githubusercontent.com/grpc/grpc/$(INTEROP_GRPC_COMMIT)/src/proto/grpc/testing/$$f.proto || exit 1; \
+	done
+	for f in ca.pem server1.pem server1.key; do \
+		curl --fail --silent --location --output interop/tls/$$f https://raw.githubusercontent.com/grpc/grpc/$(INTEROP_GRPC_COMMIT)/src/core/tsi/test_creds/$$f || exit 1; \
+	done
+.PHONY: fetch-interop-protos
 # -----------------------
 
 help:
