@@ -67,7 +67,9 @@ final class LazyConnection implements Connection
 
     private function createConnection(Cancellation $cancellation): Connection
     {
-        $future = $this->future ??= async($this->factory);
+        /** @var Future<Connection> $future */
+        $future = $this->future ?? async($this->factory);
+        $this->future = $future;
 
         try {
             return $future->await($cancellation);
