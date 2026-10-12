@@ -24,7 +24,6 @@ use Thesis\Grpc\Client\Target;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
-use function Amp\delay;
 
 /**
  * @internal
@@ -83,11 +82,6 @@ final readonly class DefaultConnection implements
     public function close(Cancellation $cancellation = new NullCancellation()): void
     {
         $this->deferredCancellation->cancel();
-
-        // Like grpc-go, active streams end with CANCELLED rather than a transport error: the cancellation reaches them
-        // through callbacks queued in the event loop, so the sockets are closed once the queue is drained.
-        delay(0);
-
         $this->sockets->close();
     }
 

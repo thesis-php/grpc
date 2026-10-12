@@ -5,16 +5,13 @@ declare(strict_types=1);
 namespace Thesis\Grpc\Client\Internal;
 
 use Amp\Cancellation;
-use Amp\CancelledException;
 use Amp\CompositeCancellation;
 use Amp\NullCancellation;
 use Amp\TimeoutCancellation;
-use Thesis\Google\Rpc\Code;
 use Thesis\Grpc\Client;
 use Thesis\Grpc\Client\PickContext;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\GrpcException;
-use Thesis\Grpc\InvokeError;
 use Thesis\Grpc\Metadata;
 
 /**
@@ -48,20 +45,18 @@ final readonly class AmphpHttpClient implements Client
                 Metadata $md,
                 Cancellation $cancellation,
             ) use ($pick): object {
+                $cancellation = self::deadline($md, $cancellation);
+
                 try {
-                    $stream = $this->connection->createStream($invoke, $md, self::deadline($md, $cancellation), $pick);
+                    $stream = $this->connection->createStream($invoke, $md, $cancellation, $pick);
                     $stream->send($request);
                     $stream->close();
 
                     return $stream->receive();
                 } catch (GrpcException $e) {
                     throw $e;
-                } catch (CancelledException $e) {
-                    throw CancellationError::from($e);
                 } catch (\Throwable $e) {
-                    // Transport-level failures (e.g. a refused connection) map to UNAVAILABLE,
-                    // so interceptors above see a gRPC status rather than a raw amphp exception.
-                    throw new InvokeError(Code::UNAVAILABLE, $e->getMessage(), previous: $e);
+                    throw TransportError::from($e, $cancellation);
                 }
             },
         );
@@ -84,10 +79,12 @@ final readonly class AmphpHttpClient implements Client
                 Metadata $md,
                 Cancellation $cancellation,
             ) use ($pick): ClientStream {
+                $cancellation = self::deadline($md, $cancellation);
+
                 try {
-                    return $this->connection->createStream($invoke, $md, self::deadline($md, $cancellation), $pick);
-                } catch (CancelledException $e) {
-                    throw CancellationError::from($e);
+                    return $this->connection->createStream($invoke, $md, $cancellation, $pick);
+                } catch (\Throwable $e) {
+                    throw TransportError::from($e, $cancellation);
                 }
             },
         );

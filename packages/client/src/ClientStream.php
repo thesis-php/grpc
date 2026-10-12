@@ -31,6 +31,8 @@ interface ClientStream extends \IteratorAggregate
     /**
      * This method should be called after the ({@see send}) method has been called for the first time.
      * Otherwise, it will "block" the calling code.
+     *
+     * @throws InvokeError
      */
     public function headers(): Metadata;
 
@@ -38,6 +40,8 @@ interface ClientStream extends \IteratorAggregate
      * This method should be called after the stream is closed ({@see close}) on either the client
      * or server side (when {@see receive} throws an exception).
      * Otherwise, it will "block" the calling code.
+     *
+     * @throws InvokeError
      */
     public function trailers(Cancellation $cancellation = new NullCancellation()): Metadata;
 
@@ -46,4 +50,11 @@ interface ClientStream extends \IteratorAggregate
      * @throws InvokeError
      */
     public function close(): void;
+
+    /**
+     * @return \Traversable<array-key, Out>
+     * @throws InvokeError
+     */
+    #[\Override]
+    public function getIterator(): \Traversable;
 }

@@ -5,13 +5,12 @@ declare(strict_types=1);
 namespace Thesis\Grpc\Client\Internal\Http2;
 
 use Amp\Cancellation;
-use Amp\CancelledException;
 use Amp\Future;
 use Amp\Http\Client\Response;
 use Amp\NullCancellation;
 use Amp\Pipeline;
 use Thesis\Google\Rpc\Code;
-use Thesis\Grpc\Client\Internal\CancellationError;
+use Thesis\Grpc\Client\Internal\TransportError;
 use Thesis\Grpc\ClientStream;
 use Thesis\Grpc\Exception\ClientStreamIsClosed;
 use Thesis\Grpc\Internal\Http2;
@@ -43,6 +42,7 @@ final class ConcurrentClientStream implements ClientStream
         private readonly \Closure $decode,
         private readonly ErrorHandler $errors,
         private readonly Future $complete,
+        private readonly Cancellation $cancellation,
     ) {
         $responseFuture->ignore();
         $complete->ignore();
@@ -63,12 +63,12 @@ final class ConcurrentClientStream implements ClientStream
     {
         try {
             if (!$this->recv->continue()) {
-                throw $this->errors->obtain($this) ?? new InvokeError(Code::UNKNOWN);
+                throw $this->errors->obtain($this->response) ?? new InvokeError(Code::UNKNOWN);
             }
 
             return $this->recv->getValue();
-        } catch (CancelledException $e) {
-            throw CancellationError::from($e);
+        } catch (\Throwable $e) {
+            throw TransportError::from($e, $this->cancellation);
         }
     }
 
@@ -77,15 +77,19 @@ final class ConcurrentClientStream implements ClientStream
     {
         try {
             return Http2\decodeMetadata($this->response->getHeaders());
-        } catch (CancelledException $e) {
-            throw CancellationError::from($e);
+        } catch (\Throwable $e) {
+            throw TransportError::from($e, $this->cancellation);
         }
     }
 
     #[\Override]
     public function trailers(Cancellation $cancellation = new NullCancellation()): Metadata
     {
-        return Http2\decodeMetadata($this->response->getTrailers()->await($cancellation)->getHeaders());
+        try {
+            return Http2\decodeMetadata($this->response->getTrailers()->await($cancellation)->getHeaders());
+        } catch (\Throwable $e) {
+            throw TransportError::from($e, $this->cancellation);
+        }
     }
 
     #[\Override]
@@ -99,8 +103,8 @@ final class ConcurrentClientStream implements ClientStream
 
         try {
             $this->complete->await();
-        } catch (CancelledException $e) {
-            throw CancellationError::from($e);
+        } catch (\Throwable $e) {
+            throw TransportError::from($e, $this->cancellation);
         }
     }
 
@@ -111,9 +115,9 @@ final class ConcurrentClientStream implements ClientStream
             yield from $this->recv;
 
             // A cancelled call ends the message stream quietly and surfaces here, while reading the trailers.
-            $error = $this->errors->obtain($this);
-        } catch (CancelledException $e) {
-            throw CancellationError::from($e);
+            $error = $this->errors->obtain($this->response);
+        } catch (\Throwable $e) {
+            throw TransportError::from($e, $this->cancellation);
         }
 
         if ($error !== null) {

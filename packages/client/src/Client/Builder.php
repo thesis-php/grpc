@@ -365,6 +365,8 @@ final class Builder
                     new DefaultConnectionFactory(new Internal\AddressSocketConnector($sockets, $address), $connectContext),
                 ),
             ))
+            // A gRPC request body is streamed once, so amphp cannot replay a request it was told was left unprocessed.
+            ->retry(0)
             ->skipDefaultUserAgent()
             ->skipAutomaticCompression()
             ->skipDefaultAcceptHeader()
@@ -374,7 +376,6 @@ final class Builder
             new Connection\LazyConnection(
                 static fn() => new Connection\DefaultConnection(
                     target: $target,
-                    sockets: $sockets,
                     resolver: $resolver,
                     loadBalancerFactory: $loadBalancerFactory,
                     streams: new Http2\StreamFactory(
@@ -388,6 +389,7 @@ final class Builder
                         maxReceiveMessageSize: $maxReceiveMessageSize,
                         compressors: $compressors,
                     ),
+                    sockets: $sockets,
                 ),
             ),
             $unary,

@@ -41,6 +41,7 @@
     },
     "require-dev": {
         "ext-bcmath": "*",
+        "amphp/hpack": "^3.2",
         "amphp/process": "^2.1",
         "phpunit/phpunit": "^12.4",
         "symfony/var-dumper": "^8.0",

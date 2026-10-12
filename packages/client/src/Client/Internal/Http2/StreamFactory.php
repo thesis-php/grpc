@@ -149,6 +149,7 @@ final readonly class StreamFactory
             },
             errors: $this->errors,
             complete: $deferred->getFuture(),
+            cancellation: $cancellation,
         );
     }
 }

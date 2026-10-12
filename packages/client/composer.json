@@ -21,6 +21,7 @@
         "php": "^8.4",
         "amphp/cache": "^2.0",
         "amphp/dns": "^2.4",
+        "amphp/http": "^2.1",
         "amphp/http-client": "^5.3",
         "amphp/socket": "^2.3",
         "league/uri": "^7.8",
